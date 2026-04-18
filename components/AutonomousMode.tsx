@@ -102,7 +102,7 @@ export function AutonomousMode({ initialUrl }: AutonomousModeProps) {
             <p className="text-[11px] text-blue-700/80">Connect CMO to Telegram to get your daily report sent straight to your phone.</p>
           </div>
           <a
-            href={`https://t.me/CMOGrowthBot?start=${user?.id}`}
+            href={`https://t.me/cmo5bot?start=${user?.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex shrink-0 items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-[11px] font-bold text-white transition hover:bg-blue-700 shadow-sm"
