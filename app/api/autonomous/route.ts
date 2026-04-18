@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAnalysisReport, setAnalysisReport, getAutonomousUsers, setAutonomousUser, deleteAutonomousUser } from "@/lib/autonomous-storage";
+import { getAnalysisReport, setAnalysisReport, getAutonomousUsers, getAutonomousUser, setAutonomousUser, deleteAutonomousUser, getTelegramChatId } from "@/lib/autonomous-storage";
 import type { AnalysisReport, AutonomousUser } from "@/lib/autonomous-storage";
 
 export async function POST(request: NextRequest) {
@@ -34,21 +34,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ users: enabledUsers.filter((u) => u.enabled) });
     }
 
+    const userState = await getAutonomousUser(userId);
     const report = await getAnalysisReport(userId);
+    const telegramChatId = await getTelegramChatId(userId);
 
-    if (report) {
-      return NextResponse.json({
-        hasNewReport: !report.seen,
-        timestamp: report.timestamp,
-        output: report.output
-      });
-    }
-    
-    // No report found for this user
     return NextResponse.json({
-      hasNewReport: false,
-      timestamp: "",
-      output: ""
+      enabled: userState?.enabled || false,
+      hasTelegram: !!telegramChatId,
+      hasNewReport: report ? !report.seen : false,
+      timestamp: report ? report.timestamp : "",
+      output: report ? report.output : ""
     });
   } catch (error) {
     console.error("Autonomous GET error:", error);

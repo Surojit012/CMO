@@ -10,6 +10,7 @@ type AutonomousModeProps = {
 export function AutonomousMode({ initialUrl }: AutonomousModeProps) {
   const { user, authenticated } = usePrivy();
   const [enabled, setEnabled] = useState(false);
+  const [hasTelegram, setHasTelegram] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -19,8 +20,12 @@ export function AutonomousMode({ initialUrl }: AutonomousModeProps) {
       try {
         const res = await fetch(`/api/autonomous?userId=${user.id}`);
         const data = await res.json();
-        // Here we just check if reports exist for simplicity or check users.json
-        // Let's assume we want to store setting state. For brevity, we check local state.
+        if (typeof data.enabled === "boolean") {
+          setEnabled(data.enabled);
+        }
+        if (typeof data.hasTelegram === "boolean") {
+          setHasTelegram(data.hasTelegram);
+        }
       } catch (err) {
         console.error("Failed to check autonomous status:", err);
       }
@@ -95,7 +100,7 @@ export function AutonomousMode({ initialUrl }: AutonomousModeProps) {
         </div>
       </div>
 
-      {enabled && (
+      {enabled && !hasTelegram && (
         <div className="mt-2 flex flex-col justify-between items-start gap-4 rounded-xl bg-blue-50/50 p-4 ring-1 ring-blue-500/10 sm:flex-row sm:items-center">
           <div>
             <h5 className="text-xs font-semibold text-blue-900 mb-0.5">Want real-time alerts?</h5>
@@ -110,6 +115,15 @@ export function AutonomousMode({ initialUrl }: AutonomousModeProps) {
             <svg className="mr-2 h-3.5 w-3.5 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.892-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
             Connect Telegram
           </a>
+        </div>
+      )}
+
+      {enabled && hasTelegram && (
+        <div className="mt-2 flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 ring-1 ring-emerald-500/20">
+          <svg className="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <span className="text-[11px] font-medium text-emerald-800">Alerts routed to Telegram</span>
         </div>
       )}
     </>

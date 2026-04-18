@@ -35,6 +35,10 @@ export async function getAutonomousUsers(): Promise<AutonomousUser[]> {
   return results.filter((r): r is AutonomousUser => r !== null);
 }
 
+export async function getAutonomousUser(userId: string): Promise<AutonomousUser | null> {
+  return await redis.get<AutonomousUser>(AUTONOMOUS_USER_KEY(userId));
+}
+
 export async function setAutonomousUser(user: AutonomousUser) {
   const pipeline = redis.pipeline();
   pipeline.set(AUTONOMOUS_USER_KEY(user.userId), user);
