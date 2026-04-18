@@ -1,0 +1,17 @@
+# CMO - The Autonomous AI Growth Team
+
+CMO is an autonomous AI growth platform designed for founders, remote dev teams, and startups. It replaces traditional marketing teams by utilizing 7 parallel AI specialists (Strategist, Copywriter, SEO, Conversion, Distribution, Reddit Intel, and Community Outreach). Users input a single URL, and within 60 seconds, CMO generates an actionable, unified, non-redundant growth report.
+
+## Platform Features:
+- Market Audit Engine: Full competitive intelligence with SWOT, pricing intel, and battle cards.
+- SEO & GEO Readiness: Optimizes sites for both traditional search and Generative Engine Optimization models like ChatGPT and Perplexity.
+- Execution Layer: Generates tweets, ads, and blog posts with one-click publish functionality.
+- Autonomous Mode: Automatically re-analyzes a specified website every day at 9 AM UTC.
+- Web3 Native: Pay per use ($5 USDC per analysis) after 3 free audits using embedded wallets via Privy.
+
+## Important Links
+- Landing Page: https://cmo-five.vercel.app/
+- Web App: https://cmo-five.vercel.app/app
+- Pricing: https://cmo-five.vercel.app/pricing
+- Blog: https://cmo-five.vercel.app/blog
+- Docs: https://cmo-five.vercel.app/docs

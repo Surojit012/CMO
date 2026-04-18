@@ -1,0 +1,35 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_20-b4f080d0ff38c18a73cb5415639e5fa1ba979c8d",
+  "solcVersion": "0.8.20",
+  "solcLongVersion": "0.8.20+commit.a1b79de6",
+  "userSourceNameMap": {
+    "contracts/CMOPayment.sol": "project/contracts/CMOPayment.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "shanghai",
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/CMOPayment.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.20;\n\ninterface IUSDC {\n    function transferFrom(address from, address to, uint256 amount) external returns (bool);\n    function balanceOf(address account) external view returns (uint256);\n    function allowance(address owner, address spender) external view returns (uint256);\n    function approve(address spender, uint256 amount) external returns (bool);\n}\n\ncontract CMOPayment {\n    address public owner;\n    IUSDC public usdc;\n\n    uint256 public analysisPrice = 5000000;\n    uint256 public auditPrice = 15000000;\n    uint256 public pricePerAnalysis = 5000000;\n\n    uint256 public FREE_ANALYSIS_LIMIT = 3;\n    mapping(address => uint256) public analysisCount;\n\n    uint256 public FREE_AUDIT_LIMIT = 0;\n    mapping(address => uint256) public auditCount;\n\n    event AnalysisPaymentReceived(address user, uint256 amount);\n    event AuditPaymentReceived(address user, uint256 amount);\n    event AnalysisUsed(address user, uint256 count);\n    event AuditUsed(address user, uint256 count);\n\n    constructor(address _usdc) {\n        owner = msg.sender;\n        usdc = IUSDC(_usdc);\n    }\n\n    function useAnalysis(address user) external returns (bool) {\n        if (analysisCount[user] < FREE_ANALYSIS_LIMIT) {\n            analysisCount[user]++;\n            emit AnalysisUsed(user, analysisCount[user]);\n            return true;\n        }\n        return false;\n    }\n\n    function payForAnalysis(address user) external returns (bool) {\n        require(\n            usdc.transferFrom(user, owner, analysisPrice),\n            \"Analysis payment failed\"\n        );\n        emit AnalysisPaymentReceived(user, analysisPrice);\n        return true;\n    }\n\n    function useAudit(address user) external returns (bool) {\n        return false;\n    }\n\n    function payForAudit(address user) external returns (bool) {\n        require(\n            usdc.transferFrom(user, owner, auditPrice),\n            \"Audit payment failed\"\n        );\n        emit AuditPaymentReceived(user, auditPrice);\n        return true;\n    }\n\n    function getRemainingFree(address user) external view returns (uint256) {\n        if (analysisCount[user] >= FREE_ANALYSIS_LIMIT) return 0;\n        return FREE_ANALYSIS_LIMIT - analysisCount[user];\n    }\n\n    function getRemainingFreeAnalyses(address user) external view returns (uint256) {\n        if (analysisCount[user] >= FREE_ANALYSIS_LIMIT) return 0;\n        return FREE_ANALYSIS_LIMIT - analysisCount[user];\n    }\n\n    function getRemainingFreeAudits(address user) external view returns (uint256) {\n        return 0;\n    }\n\n    function setAnalysisPrice(uint256 _price) external {\n        require(msg.sender == owner, \"Not owner\");\n        analysisPrice = _price;\n        pricePerAnalysis = _price;\n    }\n\n    function setAuditPrice(uint256 _price) external {\n        require(msg.sender == owner, \"Not owner\");\n        auditPrice = _price;\n    }\n}"
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+
+> cmo@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.0 (Turbopack)
+- Local:         http://localhost:3001
+- Network:       http://10.251.61.70:3001
+- Environments: .env.local, .env
+
+✓ Starting...
+⨯ Unable to acquire lock at /Users/surojitpvt/Desktop/CMO/.next/dev/lock, is another instance of next dev running?
+  Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+[?25h

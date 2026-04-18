@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+  --color-bg: #f5f5f3;
+  --color-panel: rgba(255, 255, 255, 0.9);
+  --color-panel-strong: #ffffff;
+  --color-fg: #111111;
+  --color-muted: #6b6b6b;
+  --color-soft: #e7e5e4;
+  --color-soft-strong: #d6d3d1;
+  --color-accent: #171717;
+  --color-fit-green: #22c55e;
+  --color-fit-amber: #f59e0b;
+  --color-fit-red: #ef4444;
+  --font-sans: "Avenir Next", "Helvetica Neue", "Segoe UI", sans-serif;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  touch-action: manipulation;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: #111111;
+  color: #ffffff;
+}
+
+/* Safe area inset padding for bottom-fixed elements on notched devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .fixed.bottom-0 {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 0.75rem);
+  }
+}
+
+@keyframes fitBarFill {
+  from {
+    width: 0%;
+  }
+}
+
+@keyframes skeletonPulse {
+  50% {
+    opacity: .5;
+  }
+}
+
+.animate-fit-bar {
+  animation: fitBarFill 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-skeleton-pulse {
+  animation: skeletonPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
