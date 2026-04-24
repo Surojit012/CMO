@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { publishToDevTo } from "@/lib/publishers/devto";
 import { publishToHashnode } from "@/lib/publishers/hashnode";
+import { getPrivyUserIdFromRequest } from "@/lib/privy-auth";
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await getPrivyUserIdFromRequest(request);
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
     const { platform, content, title, tags } = await request.json();
 
     if (!platform || !content) {
@@ -24,7 +31,6 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, url });
-
   } catch (error) {
     console.error("Publishing error:", error);
     return NextResponse.json(

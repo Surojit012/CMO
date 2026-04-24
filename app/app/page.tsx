@@ -1,6 +1,6 @@
 "use client";
 
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useToken } from "@privy-io/react-auth";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChatContainer } from "@/components/ChatContainer";
@@ -28,6 +28,7 @@ function getUserLabel(user: ReturnType<typeof usePrivy>["user"]) {
 export default function Home() {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
   const { ready, authenticated, user, login, logout } = usePrivy();
+  const { getAccessToken } = useToken();
   const [hasNewReportBadge, setHasNewReportBadge] = useState(false);
   const [externalReport, setExternalReport] = useState<string | null>(null);
   const [dailyReportModal, setDailyReportModal] = useState<{ markdown: string, timestamp: string } | null>(null);
@@ -38,7 +39,10 @@ export default function Home() {
     async function checkReport() {
       if (!user?.id) return;
       try {
-        const res = await fetch(`/api/autonomous?userId=${user.id}`);
+        const token = await getAccessToken();
+        const res = await fetch(`/api/autonomous`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
         const data = await res.json();
         // Just used for the little pinging red dot on the profile icon
         setHasNewReportBadge(data.hasNewReport);

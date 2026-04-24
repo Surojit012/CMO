@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useToken } from "@privy-io/react-auth";
 
 type AutonomousModeProps = {
   initialUrl?: string;
@@ -9,22 +9,30 @@ type AutonomousModeProps = {
 
 export function AutonomousMode({ initialUrl }: AutonomousModeProps) {
   const { user, authenticated } = usePrivy();
+  const { getAccessToken } = useToken();
   const [enabled, setEnabled] = useState(false);
   const [hasTelegram, setHasTelegram] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [telegramConnectToken, setTelegramConnectToken] = useState("");
 
   useEffect(() => {
     async function checkStatus() {
       if (!authenticated || !user?.id) return;
       
       try {
-        const res = await fetch(`/api/autonomous?userId=${user.id}`);
+        const token = await getAccessToken();
+        const res = await fetch(`/api/autonomous`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
         const data = await res.json();
         if (typeof data.enabled === "boolean") {
           setEnabled(data.enabled);
         }
         if (typeof data.hasTelegram === "boolean") {
           setHasTelegram(data.hasTelegram);
+        }
+        if (typeof data.telegramConnectToken === "string") {
+          setTelegramConnectToken(data.telegramConnectToken);
         }
       } catch (err) {
         console.error("Failed to check autonomous status:", err);
@@ -40,11 +48,14 @@ export function AutonomousMode({ initialUrl }: AutonomousModeProps) {
     setLoading(true);
 
     try {
+      const token = await getAccessToken();
       const res = await fetch("/api/autonomous", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
-          userId: user.id,
           websiteUrl: initialUrl,
           enabled: nextEnabled
         })
@@ -107,7 +118,7 @@ export function AutonomousMode({ initialUrl }: AutonomousModeProps) {
             <p className="text-[11px] text-blue-700/80">Connect CMO to Telegram to get your daily report sent straight to your phone.</p>
           </div>
           <a
-            href={`https://t.me/cmo5bot?start=${user?.id}`}
+            href={`https://t.me/cmo5bot?start=${telegramConnectToken}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex shrink-0 items-center justify-center rounded-full bg-blue-600 px-4 py-2 text-[11px] font-bold text-white transition hover:bg-blue-700 shadow-sm"

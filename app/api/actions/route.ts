@@ -7,7 +7,7 @@ import type { ActionRequest, ActionResponse, AnalyzeErrorResponse } from "@/lib/
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = getPrivyUserIdFromRequest(request);
+    const userId = await getPrivyUserIdFromRequest(request);
 
     if (!userId) {
       return NextResponse.json<AnalyzeErrorResponse>({ error: "Unauthorized." }, { status: 401 });

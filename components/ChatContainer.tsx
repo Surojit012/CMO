@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useCreateWallet, usePrivy, useWallets } from "@privy-io/react-auth";
+import { useCreateWallet, usePrivy, useToken, useWallets } from "@privy-io/react-auth";
 import {
   checkAndPayIfNeeded,
   getRemainingFreeAnalyses,
@@ -57,18 +57,23 @@ type ChatContainerProps = {
   onReportLoaded?: () => void;
 };
 
-function buildPrivyHeaders(userId: string, sessionId?: string) {
+async function buildPrivyHeaders(getAccessToken: () => Promise<string | null>, sessionId?: string) {
+  const token = await getAccessToken();
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${userId}`,
-    "x-privy-user-id": userId
+    "Content-Type": "application/json"
   };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   if (sessionId) headers["x-cmo-session-id"] = sessionId;
   return headers;
 }
 
 export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatContainerProps) {
   const { user } = usePrivy();
+  const { getAccessToken } = useToken();
   const { wallets } = useWallets();
   const { createWallet } = useCreateWallet();
   
@@ -340,7 +345,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       requestControllerRef.current = new AbortController();
       const response = await fetch("/api/compare", {
         method: "POST",
-        headers: buildPrivyHeaders(userId, sessionId),
+        headers: await buildPrivyHeaders(getAccessToken, sessionId),
         signal: requestControllerRef.current.signal,
         body: JSON.stringify({ url1, url2 })
       });
@@ -459,7 +464,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
         requestControllerRef.current = new AbortController();
         const response = await fetch("/api/market-audit", {
           method: "POST",
-          headers: buildPrivyHeaders(userId, sessionId),
+          headers: await buildPrivyHeaders(getAccessToken, sessionId),
           signal: requestControllerRef.current.signal,
           body: JSON.stringify({ url: normalizedUrl })
         });
@@ -562,7 +567,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
 
       const response = await fetch("/api/analyze", {
         method: "POST",
-        headers: buildPrivyHeaders(userId, sessionId),
+        headers: await buildPrivyHeaders(getAccessToken, sessionId),
         signal: requestControllerRef.current.signal,
         body: JSON.stringify({
           url: normalizedUrl
@@ -663,7 +668,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
     try {
       const response = await fetch("/api/feedback", {
         method: "POST",
-        headers: buildPrivyHeaders(userId),
+        headers: await buildPrivyHeaders(getAccessToken),
         body: JSON.stringify({
           analysisId,
           feedback
@@ -725,7 +730,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
     try {
       const response = await fetch("/api/actions", {
         method: "POST",
-        headers: buildPrivyHeaders(userId),
+        headers: await buildPrivyHeaders(getAccessToken),
         body: JSON.stringify({
           analysisId,
           section,

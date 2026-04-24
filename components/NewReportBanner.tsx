@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useToken } from "@privy-io/react-auth";
 
 type NewReportBannerProps = {
   onViewReport?: (markdown: string, timestamp: string) => void;
@@ -9,6 +9,7 @@ type NewReportBannerProps = {
 
 export function NewReportBanner({ onViewReport }: NewReportBannerProps) {
   const { user, authenticated } = usePrivy();
+  const { getAccessToken } = useToken();
   const [reportData, setReportData] = useState<{ hasNewReport: boolean; timestamp: string; output: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -19,7 +20,10 @@ export function NewReportBanner({ onViewReport }: NewReportBannerProps) {
       const u = user;
       if (!u?.id) return;
       try {
-        const res = await fetch(`/api/autonomous?userId=${u.id}`);
+        const token = await getAccessToken();
+        const res = await fetch(`/api/autonomous`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        });
         const data = await res.json();
         if (data.output) {
           setReportData(data);
@@ -41,10 +45,13 @@ export function NewReportBanner({ onViewReport }: NewReportBannerProps) {
     try {
       if (reportData.hasNewReport) {
         // Mark as seen
+        const token = await getAccessToken();
         await fetch("/api/autonomous", {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId: u.id })
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          }
         });
         setReportData(prev => prev ? { ...prev, hasNewReport: false } : null);
       }

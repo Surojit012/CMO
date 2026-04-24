@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useToken } from "@privy-io/react-auth";
 import { Loader2, History, PanelLeftClose, ChevronRight, ChevronDown, Activity, ChevronUp, FileText } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -51,6 +51,7 @@ function generateModuleTagline(analyses: SavedReport[]): string {
 
 export function HistorySidebar({ isOpen, onClose, onSessionSelect, activeSessionId }: HistorySidebarProps) {
   const { user } = usePrivy();
+  const { getAccessToken } = useToken();
   const [sessions, setSessions] = useState<HistorySession[]>([]);
   const [expandedSessions, setExpandedSessions] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
@@ -63,16 +64,9 @@ export function HistorySidebar({ isOpen, onClose, onSessionSelect, activeSession
       setLoading(true);
       setError(null);
       try {
-        // Send privy token internally via standard fetch, intercepting it if needed, or Next.js layout does it.
-        // But to be safe, the standard fetch to our own API route will include the user's cookies/tokens if they are authenticated via Privy
-        // Privy uses a Bearer token or cookie depending on configuration. Our API route uses `getPrivyUserIdFromRequest`.
-        // To be completely safe and pass the token, we can just use the Authorization header with the ID token if available.
-        // For CMO, the global setup typically relies on cookies or the auth provider injecting it.
+        const token = await getAccessToken();
         const res = await fetch("/api/history", {
-            headers: {
-                "Authorization": `Bearer ${user.id}`, // We'll just pass user.id to mimic buildPrivyHeaders for now 
-                 "x-privy-user-id": user.id
-            }
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined
         });
         
         if (!res.ok) throw new Error("Failed to fetch history");

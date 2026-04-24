@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { setTelegramChatId } from "@/lib/autonomous-storage";
+import { consumeTelegramLinkToken, setTelegramChatId } from "@/lib/autonomous-storage";
 import { sendTelegramAlert } from "@/lib/telegram";
 
 export async function POST(req: Request) {
@@ -10,17 +10,27 @@ export async function POST(req: Request) {
       const text = data.message.text.trim();
       const chatId = data.message.chat.id;
 
-      // Expect format: /start <userId>
       if (text.startsWith("/start ")) {
         const parts = text.split(" ");
         if (parts.length === 2) {
-          const userId = parts[1];
-          
+          const token = parts[1];
+          const userId = await consumeTelegramLinkToken(token);
+
+          if (!userId) {
+            await sendTelegramAlert(
+              chatId.toString(),
+              "<b>Link expired.</b> Open CMO and tap Connect Telegram again to generate a fresh secure link."
+            );
+            return NextResponse.json({ ok: true });
+          }
+
           await setTelegramChatId(userId, chatId);
 
           await sendTelegramAlert(
             chatId.toString(),
-            `<b>✅ Successfully connected to CMO!</b>\n\nYour account is now linked. You will receive real-time alerts here whenever your autonomous growth analysis completes.`
+            `<b>✅ Successfully connected to CMO!</b>
+
+Your account is now linked. You will receive real-time alerts here whenever your autonomous growth analysis completes.`
           );
 
           return NextResponse.json({ ok: true });

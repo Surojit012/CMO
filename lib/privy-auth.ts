@@ -1,33 +1,46 @@
 import type { NextRequest } from "next/server";
 
-function decodeJwtSubject(token: string) {
-  const parts = token.split(".");
+type PrivyUserResponse = {
+  id?: string;
+};
 
-  if (parts.length !== 3) {
+function getBearerToken(request: NextRequest) {
+  const authHeader = request.headers.get("authorization");
+
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const token = authHeader.slice("Bearer ".length).trim();
+  return token || null;
+}
+
+export async function getPrivyUserIdFromRequest(request: NextRequest) {
+  const token = getBearerToken(request);
+  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+
+  if (!token || !appId) {
     return null;
   }
 
   try {
-    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as {
-      sub?: string;
-      userId?: string;
-      did?: string;
-    };
+    const response = await fetch("https://auth.privy.io/api/v1/users/me", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "privy-app-id": appId,
+        Accept: "application/json"
+      },
+      cache: "no-store"
+    });
 
-    return payload.sub || payload.userId || payload.did || null;
+    if (!response.ok) {
+      return null;
+    }
+
+    const user = (await response.json()) as PrivyUserResponse;
+    return user.id?.trim() || null;
   } catch {
     return null;
   }
-}
-
-export function getPrivyUserIdFromRequest(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-
-  if (authHeader?.startsWith("Bearer ")) {
-    const token = authHeader.slice("Bearer ".length).trim();
-    return decodeJwtSubject(token) || token || null;
-  }
-
-  const headerUserId = request.headers.get("x-privy-user-id");
-  return headerUserId?.trim() || null;
 }

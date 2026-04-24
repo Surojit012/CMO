@@ -8,6 +8,9 @@ const ARC_RPC_URL =
     : (process.env.NEXT_PUBLIC_ARC_RPC_URL || "https://rpc.testnet.arc.network");
 const BALANCE_RETRY_ATTEMPTS = 3;
 const BALANCE_RETRY_DELAY_MS = 500;
+const TX_RETRY_ATTEMPTS = 4;
+const TX_RETRY_DELAY_MS = 1500;
+const POST_TX_SETTLE_DELAY_MS = 1200;
 
 if (!CMO_CONTRACT_ADDRESS) {
   console.warn("⚠️ Missing CMO contract address in environment.");
@@ -53,6 +56,67 @@ export type WalletBalanceMeta = {
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  return "Unknown transaction error.";
+}
+
+function isRetryableTxError(error: unknown) {
+  const message = getErrorMessage(error).toLowerCase();
+
+  return [
+    "txpool is full",
+    "transaction creation failed",
+    "replacement transaction underpriced",
+    "already known",
+    "nonce",
+    "temporarily unavailable",
+    "network error",
+    "timeout"
+  ].some((pattern) => message.includes(pattern));
+}
+
+function toUserFacingPaymentError(error: unknown) {
+  const message = getErrorMessage(error);
+
+  if (isRetryableTxError(error)) {
+    return "Arc is temporarily congested. Please wait a few seconds and try again.";
+  }
+
+  return message;
+}
+
+async function sendTransactionWithRetry(send: () => Promise<any>, label: string) {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= TX_RETRY_ATTEMPTS; attempt += 1) {
+    try {
+      const tx = await send();
+      const receipt = await tx.wait(1);
+      await wait(POST_TX_SETTLE_DELAY_MS);
+      return { tx, receipt };
+    } catch (error) {
+      lastError = error;
+      console.error(`${label} attempt ${attempt} failed:`, error);
+
+      if (attempt === TX_RETRY_ATTEMPTS || !isRetryableTxError(error)) {
+        throw error;
+      }
+
+      await wait(TX_RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error(`${label} failed.`);
 }
 
 export async function getWalletBalanceWithMeta(address: string): Promise<WalletBalanceMeta> {
@@ -150,15 +214,14 @@ export async function checkAndPayIfNeeded(
       const wouldUseFree = await cmoContract.useAnalysis.staticCall(address);
       if (wouldUseFree) {
         try {
-          const tx = await cmoContract.useAnalysis(address);
-          await tx.wait();
+          await sendTransactionWithRetry(() => cmoContract.useAnalysis(address), "useAnalysis");
           if (typeof window !== "undefined") {
             window.dispatchEvent(new Event("refresh-wallet-stats"));
           }
           return { success: true, paid: false, remaining: Number(freeRemaining) - 1 };
         } catch (err: any) {
           console.error("Free use failed:", err);
-          return { success: false, paid: false, remaining: 0, error: err.message };
+          return { success: false, paid: false, remaining: 0, error: toUserFacingPaymentError(err) };
         }
       }
     }
@@ -185,9 +248,11 @@ export async function checkAndPayIfNeeded(
     console.log("Current allowance raw:", allowance.toString());
 
     if (allowance < pricePerAnalysis) {
-      console.log("Approving exact contract price:", pricePerAnalysis.toString());
-      const approveTx = await usdcContract.approve(CMO_CONTRACT_ADDRESS!, pricePerAnalysis);
-      await approveTx.wait();
+      console.log("Approving max allowance for smoother repeat payments");
+      const { tx: approveTx } = await sendTransactionWithRetry(
+        () => usdcContract.approve(CMO_CONTRACT_ADDRESS!, ethers.MaxUint256),
+        "approve"
+      );
       console.log("Approve tx hash:", approveTx.hash);
     } else {
       console.log("Allowance sufficient — skipping approve");
@@ -195,8 +260,10 @@ export async function checkAndPayIfNeeded(
 
     // 5. Execute payment
     console.log("Executing payForAnalysis...");
-    const paymentTx = await cmoContract.payForAnalysis(address);
-    const receipt = await paymentTx.wait(1);
+    const { tx: paymentTx, receipt } = await sendTransactionWithRetry(
+      () => cmoContract.payForAnalysis(address),
+      "payForAnalysis"
+    );
     const txHash = receipt?.hash || paymentTx.hash;
     console.log("Payment tx hash:", txHash);
 
@@ -228,7 +295,7 @@ export async function checkAndPayIfNeeded(
 
   } catch (err: any) {
     console.error("checkAndPayIfNeeded error:", err);
-    return { success: false, paid: false, remaining: 0, error: err.message };
+    return { success: false, paid: false, remaining: 0, error: toUserFacingPaymentError(err) };
   }
 }
 
@@ -278,19 +345,20 @@ export async function checkAndPayForAudit(
     console.log('Current allowance:', allowance.toString());
 
     if (allowance < auditPrice) {
-      console.log('Approving audit price:', auditPrice.toString());
-      const approveTx = await usdcContract.approve(
-        CMO_CONTRACT_ADDRESS!, 
-        auditPrice
+      console.log('Approving max allowance for audit payments');
+      const { tx: approveTx } = await sendTransactionWithRetry(
+        () => usdcContract.approve(CMO_CONTRACT_ADDRESS!, ethers.MaxUint256),
+        'approveAudit'
       );
-      await approveTx.wait();
-      console.log('Approved for audit');
+      console.log('Approved for audit:', approveTx.hash);
     }
 
     // Execute $15 payment
     console.log('Executing payForAudit...');
-    const paymentTx = await cmoContract.payForAudit(address);
-    const receipt = await paymentTx.wait(1);
+    const { tx: paymentTx, receipt } = await sendTransactionWithRetry(
+      () => cmoContract.payForAudit(address),
+      'payForAudit'
+    );
     const txHash = receipt?.hash || paymentTx.hash;
     console.log('Audit payment tx:', txHash);
 
@@ -327,7 +395,7 @@ export async function checkAndPayForAudit(
       success: false, 
       paid: false, 
       remaining: 0, 
-      error: err.message 
+      error: toUserFacingPaymentError(err) 
     };
   }
 }

@@ -31,7 +31,7 @@ Be specific to this product.`
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = getPrivyUserIdFromRequest(request);
+    const userId = await getPrivyUserIdFromRequest(request);
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });

@@ -12,7 +12,7 @@ export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   try {
-    const userId = getPrivyUserIdFromRequest(req);
+    const userId = await getPrivyUserIdFromRequest(req);
     if (!userId) {
       return NextResponse.json<AnalyzeErrorResponse>(
         { error: "Unauthorized." },

@@ -29,7 +29,7 @@ function getErrorStatus(message: string) {
 
 export async function POST(req: NextRequest) {
   try {
-    const userId = getPrivyUserIdFromRequest(req);
+    const userId = await getPrivyUserIdFromRequest(req);
     const sessionId = req.headers.get("x-cmo-session-id") || null;
 
     if (!userId) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePrivy } from "@privy-io/react-auth";
+import { usePrivy, useToken } from "@privy-io/react-auth";
 import { Copy, ChevronDown, ChevronUp, Check, RefreshCw, SlidersHorizontal, ArrowRight } from "lucide-react";
 import type { OutreachPlan, OutreachCommunity, OutreachPhase, PostTemplate } from "@/lib/outreach-types";
 import type { AnalyzeSuccessResponse } from "@/lib/types";
@@ -281,6 +281,7 @@ function SkeletonLoader() {
 
 export function OutreachPlanView({ analysisData, tone: passedTone = "casual", sessionId }: { analysisData: AnalyzeSuccessResponse, tone?: string, sessionId?: string }) {
   const { user } = usePrivy();
+  const { getAccessToken } = useToken();
   const [plan, setPlan] = useState<OutreachPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -305,11 +306,11 @@ export function OutreachPlanView({ analysisData, tone: passedTone = "casual", se
     setError(null);
 
     try {
+      const token = await getAccessToken();
       const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${user?.id || ""}`,
-        "x-privy-user-id": user?.id || ""
+        "Content-Type": "application/json"
       };
+      if (token) headers.Authorization = `Bearer ${token}`;
       if (sessionId) headers["x-cmo-session-id"] = sessionId;
 
       const res = await fetch("/api/outreach", {

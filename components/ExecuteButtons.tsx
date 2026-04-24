@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToken } from "@privy-io/react-auth";
 
 import type {
   AnalyzeErrorResponse,
@@ -33,7 +34,8 @@ type PublishStatus = {
   error?: string;
 };
 
-export function ExecuteButtons({ strategyContext, userId }: ExecuteButtonsProps) {
+export function ExecuteButtons({ strategyContext, userId: _userId }: ExecuteButtonsProps) {
+  const { getAccessToken } = useToken();
   const [analysisContext, setAnalysisContext] = useState("");
   const [loadingAction, setLoadingAction] = useState<ExecuteAction | null>(null);
   const [results, setResults] = useState<Partial<Record<ExecuteAction, string>>>({});
@@ -56,12 +58,12 @@ export function ExecuteButtons({ strategyContext, userId }: ExecuteButtonsProps)
     setError(null);
 
     try {
+      const token = await getAccessToken();
       const response = await fetch("/api/execute", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${userId}`,
-          "x-privy-user-id": userId
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           action,
@@ -94,9 +96,13 @@ export function ExecuteButtons({ strategyContext, userId }: ExecuteButtonsProps)
     setPublishStatuses(prev => ({ ...prev, [platform]: { status: "loading" } }));
 
     try {
+      const token = await getAccessToken();
       const response = await fetch("/api/publish", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           platform,
           content
