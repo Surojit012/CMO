@@ -626,10 +626,9 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
           throw new Error(res.error === "insufficient_balance" ? "Payment failed due to insufficient funds." : `Web3 Payment Failed: ${res.error}`);
         }
 
-        if (res.success && res.paid) {
+        if (res.success) {
           if (res.newBalance) setUsdcBalance(res.newBalance);
-          const newFree = await getRemainingFreeAnalyses(wallet.address);
-          setFreeRemaining(newFree);
+          setFreeRemaining(res.remaining);
         }
       }
     } catch (paymentError: any) {

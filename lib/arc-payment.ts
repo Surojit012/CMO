@@ -11,6 +11,7 @@ const BALANCE_RETRY_DELAY_MS = 500;
 const TX_RETRY_ATTEMPTS = 4;
 const TX_RETRY_DELAY_MS = 1500;
 const POST_TX_SETTLE_DELAY_MS = 1200;
+const TX_CONFIRM_TIMEOUT_MS = 25000;
 
 if (!CMO_CONTRACT_ADDRESS) {
   console.warn("⚠️ Missing CMO contract address in environment.");
@@ -95,18 +96,37 @@ function toUserFacingPaymentError(error: unknown) {
   return message;
 }
 
+async function waitForTransactionReceipt(tx: any) {
+  const browserWait = tx.wait(1);
+  const rpcWait = arcProvider.waitForTransaction(tx.hash, 1, TX_CONFIRM_TIMEOUT_MS);
+
+  const receipt = await Promise.race([
+    browserWait,
+    rpcWait,
+    wait(TX_CONFIRM_TIMEOUT_MS).then(() => {
+      throw new Error("Transaction confirmation timed out for " + tx.hash);
+    })
+  ]);
+
+  if (!receipt) {
+    throw new Error("Transaction confirmation timed out for " + tx.hash);
+  }
+
+  return receipt;
+}
+
 async function sendTransactionWithRetry(send: () => Promise<any>, label: string) {
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= TX_RETRY_ATTEMPTS; attempt += 1) {
     try {
       const tx = await send();
-      const receipt = await tx.wait(1);
+      const receipt = await waitForTransactionReceipt(tx);
       await wait(POST_TX_SETTLE_DELAY_MS);
       return { tx, receipt };
     } catch (error) {
       lastError = error;
-      console.error(`${label} attempt ${attempt} failed:`, error);
+      console.error(label + " attempt " + attempt + " failed:", error);
 
       if (attempt === TX_RETRY_ATTEMPTS || !isRetryableTxError(error)) {
         throw error;
@@ -116,7 +136,7 @@ async function sendTransactionWithRetry(send: () => Promise<any>, label: string)
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error(`${label} failed.`);
+  throw lastError instanceof Error ? lastError : new Error(label + " failed.");
 }
 
 export async function getWalletBalanceWithMeta(address: string): Promise<WalletBalanceMeta> {
@@ -214,11 +234,16 @@ export async function checkAndPayIfNeeded(
       const wouldUseFree = await cmoContract.useAnalysis.staticCall(address);
       if (wouldUseFree) {
         try {
-          await sendTransactionWithRetry(() => cmoContract.useAnalysis(address), "useAnalysis");
+          const { tx: freeUseTx } = await sendTransactionWithRetry(() => cmoContract.useAnalysis(address), "useAnalysis");
           if (typeof window !== "undefined") {
             window.dispatchEvent(new Event("refresh-wallet-stats"));
           }
-          return { success: true, paid: false, remaining: Number(freeRemaining) - 1 };
+          return {
+            success: true,
+            paid: false,
+            remaining: Number(freeRemaining) - 1,
+            txHash: freeUseTx.hash
+          };
         } catch (err: any) {
           console.error("Free use failed:", err);
           return { success: false, paid: false, remaining: 0, error: toUserFacingPaymentError(err) };
