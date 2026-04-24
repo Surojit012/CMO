@@ -44,7 +44,7 @@ export function WalletPanel() {
   const statusLabel = freeAnalyses > 0 ? `${freeAnalyses} FREE TRIALS REMAINING` : "Pay $5 per analysis";
   const statusDotClass = freeAnalyses > 0 ? "bg-green-500" : "bg-zinc-900";
 
-  async function refreshStats(manual = false, overrideBalance?: string) {
+  async function refreshStats(manual = false, overrideBalance?: string, overrideFreeAnalyses?: number) {
     if (!address) return;
 
     if (manual) {
@@ -73,18 +73,23 @@ export function WalletPanel() {
         setBalanceError(balanceResult.error ?? null);
       }
 
-      const [freeResult] = await Promise.allSettled([
-        getRemainingFreeAnalyses(address)
-      ]);
-
-      if (freeResult.status === "fulfilled") {
-        setFreeAnalyses(freeResult.value);
-      }
-
-      if (freeResult.status === "rejected") {
-        setStatsError("Usage stats temporarily unavailable.");
-      } else {
+      if (typeof overrideFreeAnalyses === "number") {
+        setFreeAnalyses(overrideFreeAnalyses);
         setStatsError(null);
+      } else {
+        const [freeResult] = await Promise.allSettled([
+          getRemainingFreeAnalyses(address)
+        ]);
+
+        if (freeResult.status === "fulfilled") {
+          setFreeAnalyses(freeResult.value);
+        }
+
+        if (freeResult.status === "rejected") {
+          setStatsError("Usage stats temporarily unavailable.");
+        } else {
+          setStatsError(null);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -105,8 +110,10 @@ export function WalletPanel() {
     }, 15000);
 
     const handleRefreshEvent = (event: Event) => {
-      const newBalance = (event as CustomEvent).detail?.newBalance as string | undefined;
-      void refreshStats(true, newBalance);
+      const detail = (event as CustomEvent).detail || {};
+      const newBalance = detail.newBalance as string | undefined;
+      const remaining = detail.remaining as number | undefined;
+      void refreshStats(true, newBalance, remaining);
     };
     window.addEventListener("refresh-wallet-stats", handleRefreshEvent);
 

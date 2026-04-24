@@ -74,21 +74,23 @@ export function HistorySidebar({ isOpen, onClose, onSessionSelect, activeSession
         const data = await res.json();
         const rawReports: SavedReport[] = data.savedReports || [];
         
-        // Group by session_id (fallback to url if no session_id exists)
+        // Group by project domain first, then by session within that domain so unrelated projects do not share one tree
         const groups: Record<string, SavedReport[]> = {};
         for (const report of rawReports) {
-          const key = report.session_id || `legacy-${report.url}`;
+          const domainKey = extractDomain(report.url);
+          const sessionKey = report.session_id || ("legacy-" + report.url);
+          const key = domainKey + "::" + sessionKey;
           if (!groups[key]) groups[key] = [];
           groups[key].push(report);
         }
 
-        const compiledSessions: HistorySession[] = Object.entries(groups).map(([sessionId, analyses]) => {
+        const compiledSessions: HistorySession[] = Object.entries(groups).map(([groupKey, analyses]) => {
           // Sort oldest first within a session so it feels chronological 
           analyses.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
           
           const domain = extractDomain(analyses[0].url);
           return {
-            sessionId: sessionId,
+            sessionId: groupKey,
             title: domain,
             createdAt: analyses[analyses.length - 1].created_at, // Use the newest report time for session time
             urlAnalyzed: analyses[0].url,

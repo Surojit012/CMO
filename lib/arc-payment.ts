@@ -100,19 +100,27 @@ async function waitForTransactionReceipt(tx: any) {
   const browserWait = tx.wait(1);
   const rpcWait = arcProvider.waitForTransaction(tx.hash, 1, TX_CONFIRM_TIMEOUT_MS);
 
-  const receipt = await Promise.race([
-    browserWait,
-    rpcWait,
-    wait(TX_CONFIRM_TIMEOUT_MS).then(() => {
-      throw new Error("Transaction confirmation timed out for " + tx.hash);
-    })
-  ]);
+  try {
+    const receipt = await Promise.race([
+      browserWait,
+      rpcWait,
+      wait(TX_CONFIRM_TIMEOUT_MS).then(() => null)
+    ]);
 
-  if (!receipt) {
-    throw new Error("Transaction confirmation timed out for " + tx.hash);
+    if (receipt) {
+      return receipt;
+    }
+
+    console.warn("Transaction confirmation timed out, continuing with tx hash:", tx.hash);
+    return null;
+  } catch (error) {
+    if (tx?.hash) {
+      console.warn("Transaction confirmation fallback used for tx hash:", tx.hash, error);
+      return null;
+    }
+
+    throw error;
   }
-
-  return receipt;
 }
 
 async function sendTransactionWithRetry(send: () => Promise<any>, label: string) {
@@ -236,7 +244,7 @@ export async function checkAndPayIfNeeded(
         try {
           const { tx: freeUseTx } = await sendTransactionWithRetry(() => cmoContract.useAnalysis(address), "useAnalysis");
           if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event("refresh-wallet-stats"));
+            window.dispatchEvent(new CustomEvent("refresh-wallet-stats", { detail: { remaining: Number(freeRemaining) - 1 } }));
           }
           return {
             success: true,
@@ -313,7 +321,7 @@ export async function checkAndPayIfNeeded(
     console.log("New balance after payment:", newBalance);
 
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("refresh-wallet-stats", { detail: { newBalance } }));
+      window.dispatchEvent(new CustomEvent("refresh-wallet-stats", { detail: { newBalance, remaining: 0 } }));
     }
 
     return { success: true, paid: true, remaining: 0, txHash, newBalance };
