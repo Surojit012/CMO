@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { usePrivy, useToken, useWallets } from "@privy-io/react-auth";
 
 import {
   ARC_PAYMENT_DEBUG,
@@ -10,8 +10,11 @@ import {
   getWalletBalanceWithMeta
 } from "@/lib/arc-payment";
 
+const FREE_ANALYSIS_LIMIT = 3;
+
 export function WalletPanel() {
   const { ready, authenticated } = usePrivy();
+  const { getAccessToken } = useToken();
   const { wallets } = useWallets();
 
   const [balance, setBalance] = useState("0.00");
@@ -41,7 +44,7 @@ export function WalletPanel() {
   const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "No wallet";
   // Used only for UI copy/disabled states.
   const needsFunding = parseFloat(balance) < 5;
-  const statusLabel = freeAnalyses > 0 ? `${freeAnalyses} FREE TRIALS REMAINING` : "Pay $5 per analysis";
+  const statusLabel = freeAnalyses > 0 ? (freeAnalyses + " FREE TRIALS REMAINING") : "Pay  per analysis";
   const statusDotClass = freeAnalyses > 0 ? "bg-green-500" : "bg-zinc-900";
 
   async function refreshStats(manual = false, overrideBalance?: string, overrideFreeAnalyses?: number) {
@@ -77,18 +80,37 @@ export function WalletPanel() {
         setFreeAnalyses(overrideFreeAnalyses);
         setStatsError(null);
       } else {
-        const [freeResult] = await Promise.allSettled([
-          getRemainingFreeAnalyses(address)
+        const token = await getAccessToken();
+        const [freeResult, historyResult] = await Promise.allSettled([
+          getRemainingFreeAnalyses(address),
+          fetch("/api/history", {
+            headers: token ? { Authorization: "Bearer " + token } : undefined
+          }).then(async (response) => {
+            if (!response.ok) {
+              throw new Error("Failed to fetch history");
+            }
+
+            const data = await response.json();
+            return Array.isArray(data.savedReports) ? data.savedReports : [];
+          })
         ]);
 
-        if (freeResult.status === "fulfilled") {
-          setFreeAnalyses(freeResult.value);
-        }
+        const chainRemaining = freeResult.status === "fulfilled" ? freeResult.value : null;
+        const inferredRemaining = historyResult.status === "fulfilled"
+          ? Math.max(0, FREE_ANALYSIS_LIMIT - historyResult.value.filter((report: { type?: string }) => report.type === "analysis").length)
+          : null;
 
-        if (freeResult.status === "rejected") {
-          setStatsError("Usage stats temporarily unavailable.");
-        } else {
+        if (chainRemaining !== null && inferredRemaining !== null) {
+          setFreeAnalyses(Math.min(chainRemaining, inferredRemaining));
           setStatsError(null);
+        } else if (chainRemaining !== null) {
+          setFreeAnalyses(chainRemaining);
+          setStatsError(null);
+        } else if (inferredRemaining !== null) {
+          setFreeAnalyses(inferredRemaining);
+          setStatsError(null);
+        } else {
+          setStatsError("Usage stats temporarily unavailable.");
         }
       }
     } catch (e) {
@@ -204,7 +226,7 @@ export function WalletPanel() {
         </div>
         {freeAnalyses > 0 && (
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-            {freeAnalyses} / 3 free
+            {freeAnalyses} / {FREE_ANALYSIS_LIMIT} free
           </p>
         )}
       </div>
