@@ -4,19 +4,22 @@ type PrivyUserResponse = {
   id?: string;
 };
 
-function getBearerToken(request: NextRequest) {
+function getAuthToken(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
 
-  if (!authHeader?.startsWith("Bearer ")) {
-    return null;
+  if (authHeader?.startsWith("Bearer ")) {
+    const headerToken = authHeader.slice("Bearer ".length).trim();
+    if (headerToken) {
+      return headerToken;
+    }
   }
 
-  const token = authHeader.slice("Bearer ".length).trim();
-  return token || null;
+  const cookieToken = request.cookies.get("privy-token")?.value?.trim();
+  return cookieToken || null;
 }
 
 export async function getPrivyUserIdFromRequest(request: NextRequest) {
-  const token = getBearerToken(request);
+  const token = getAuthToken(request);
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
 
   if (!token || !appId) {
