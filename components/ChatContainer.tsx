@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { AgentEvent } from "@/lib/agent-events";
 import { useCreateWallet, usePrivy, useToken, useWallets } from "@privy-io/react-auth";
 import {
   checkAndPayIfNeeded,
@@ -31,6 +32,7 @@ import { OutreachPlanView } from "./OutreachPlanView";
 import { ComparisonReport } from "./ComparisonReport";
 import { HistorySidebar, SavedReport, type HistorySession } from "./HistorySidebar";
 import { OnboardingGuide } from "./OnboardingGuide";
+import { AgentWarRoom } from "./AgentWarRoom";
 import { History, PanelLeft, Swords } from "lucide-react";
 
 const loadingSteps = [
@@ -85,6 +87,8 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
   const [currentStep, setCurrentStep] = useState<(typeof loadingSteps)[number] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
+  const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
+  const [isWarRoomActive, setIsWarRoomActive] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [compareUrl, setCompareUrl] = useState("");
   const [comparisonResult, setComparisonResult] = useState<CompareSuccessResponse | null>(null);
@@ -108,7 +112,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       return;
     }
     
-    if (currentStep) {
+    if (currentStep || isWarRoomActive) {
       setOnboardingStep("waiting");
     } else if (messages.length > 0) {
       setOnboardingStep("done");
@@ -551,13 +555,9 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       }
     ]);
 
-    setCurrentStep(loadingSteps[0]);
-    let stepIndex = 0;
-
-    loadingIntervalRef.current = window.setInterval(() => {
-      stepIndex = Math.min(stepIndex + 1, loadingSteps.length - 1);
-      setCurrentStep(loadingSteps[stepIndex]);
-    }, 1400);
+    // Activate War Room for live agent events
+    setAgentEvents([]);
+    setIsWarRoomActive(true);
 
     let data: AnalyzeSuccessResponse;
 
@@ -574,28 +574,79 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
         })
       });
 
-      const resData = (await response.json()) as AnalyzeSuccessResponse | AnalyzeErrorResponse;
-
-      if (!response.ok || "error" in resData) {
-        throw new Error("error" in resData ? resData.error : "Analysis failed.");
+      // If validation failed, the API returns plain JSON (not SSE)
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("text/event-stream")) {
+        const resData = (await response.json()) as AnalyzeErrorResponse;
+        throw new Error(resData.error || "Analysis failed.");
       }
-      
-      data = resData as AnalyzeSuccessResponse;
+
+      // Read SSE stream for live agent events
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalResult: AnalyzeSuccessResponse | null = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const chunks = buffer.split("\n\n");
+        buffer = chunks.pop() || "";
+
+        for (const chunk of chunks) {
+          if (!chunk.trim()) continue;
+
+          const lines = chunk.split("\n");
+          let eventName = "";
+          let eventData = "";
+
+          for (const line of lines) {
+            if (line.startsWith("event: ")) eventName = line.slice(7);
+            else if (line.startsWith("data: ")) eventData = line.slice(6);
+          }
+
+          if (!eventData) continue;
+
+          try {
+            const parsed = JSON.parse(eventData);
+
+            if (eventName === "agent") {
+              setAgentEvents((prev) => [...prev, parsed as AgentEvent]);
+            } else if (eventName === "result") {
+              finalResult = parsed as AnalyzeSuccessResponse;
+            } else if (eventName === "error") {
+              throw new Error(parsed.error || "Analysis failed.");
+            }
+          } catch (parseErr) {
+            if (parseErr instanceof Error && parseErr.message !== "Analysis failed.") {
+              // JSON parse error on a chunk — skip it
+              continue;
+            }
+            throw parseErr;
+          }
+        }
+      }
+
+      if (!finalResult) {
+        throw new Error("Analysis stream ended without a result.");
+      }
+
+      data = finalResult;
     } catch (submitError) {
       if (submitError instanceof Error && submitError.name === "AbortError") {
+        setIsWarRoomActive(false);
         return;
       }
 
+      setIsWarRoomActive(false);
       setCurrentStep(null);
       setError(
         submitError instanceof Error
           ? submitError.message
           : "Something went wrong while analyzing the website. You have not been charged."
       );
-      if (loadingIntervalRef.current) {
-        window.clearInterval(loadingIntervalRef.current);
-        loadingIntervalRef.current = null;
-      }
       // Remove optimistic user message
       updateTargetMessages(curr => curr.filter(m => m.role !== "user"));
       return;
@@ -603,8 +654,10 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       requestControllerRef.current = null;
     }
 
+    // War room done — transition to payment phase
+    setIsWarRoomActive(false);
+
     // GENERATION SUCCESS. NOW CHARGE.
-    if (loadingIntervalRef.current) window.clearInterval(loadingIntervalRef.current);
 
     try {
       if (wallet) {
@@ -813,7 +866,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       ? () => void handleCompareSubmit()
       : undefined;
 
-  const hasMessages = messages.length > 0 || Boolean(currentStep);
+  const hasMessages = messages.length > 0 || Boolean(currentStep) || isWarRoomActive;
 
   return (
     <div className="flex w-full relative min-h-[calc(100vh-65px)]">
@@ -972,7 +1025,8 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
           )
         )}
 
-        {currentStep ? <LoadingState currentStep={currentStep} steps={[...loadingSteps]} /> : null}
+        {isWarRoomActive && activeTab === "analysis" ? <AgentWarRoom events={agentEvents} /> : null}
+        {currentStep && !isWarRoomActive ? <LoadingState currentStep={currentStep} steps={[...loadingSteps]} /> : null}
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 flex justify-center px-2 pb-3 sm:px-4 sm:pb-5 md:pb-7">
@@ -1019,7 +1073,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
             {activeTab !== "outreach" && (
               <div className="space-y-2">
                 <InputBar
-                  disabled={loadingIntervalRef.current !== null || isFundingSetup}
+                  disabled={loadingIntervalRef.current !== null || isFundingSetup || isWarRoomActive}
                   value={inputValue}
                   onChange={setInputValue}
                   onSubmit={compareMode ? () => void handleCompareSubmit() : handleSubmit}

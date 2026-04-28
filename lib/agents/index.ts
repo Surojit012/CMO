@@ -1,6 +1,8 @@
 import { callFireworks } from "@/lib/ai-router";
 import { redditAgent } from "./redditAgent";
 import { loadSkillPrompt } from "./loadSkill";
+import type { AgentEventCallback } from "@/lib/agent-events";
+import { withAgentEvent } from "@/lib/agent-events";
 
 export type SpecializedAgentName =
   | "strategist"
@@ -284,33 +286,68 @@ export function runDistributionAgent(websiteContent: string, strategistBrief?: s
  * ──────────────────────────────────────────────────────── */
 export async function runAllAgents(
   websiteContent: string,
-  marketAuditSummary?: string
+  marketAuditSummary?: string,
+  onEvent?: AgentEventCallback
 ): Promise<SpecializedAgentOutputs> {
   // Step 1: Run Strategist + product info extraction in parallel.
-  // The Strategist establishes ICP, positioning, and GTM direction first.
-  // If market audit data exists, it's already in websiteContent (injected by lib/ai.ts)
   const [strategist, productInfo] = await Promise.all([
-    runStrategistAgent(websiteContent),
-    extractProductInfo(websiteContent)
+    withAgentEvent(
+      "strategist",
+      "Analyzing positioning, ICP, and GTM strategy…",
+      "Brief ready — broadcasting to the team.",
+      () => runStrategistAgent(websiteContent),
+      onEvent
+    ),
+    withAgentEvent(
+      "system",
+      "Extracting product identity…",
+      "Product identified.",
+      () => extractProductInfo(websiteContent),
+      onEvent
+    )
   ]);
 
   // Step 2: Inject the Strategist's output into all remaining agents.
-  // They run in parallel but each agent's system prompt now includes the
-  // strategic brief, so their analysis is aligned to the same ICP and
-  // positioning direction.
-  //
-  // The SEO agent additionally receives market audit keyword gaps if available,
-  // appended to its strategist brief for competitive SEO context.
   const seoContext = marketAuditSummary
     ? `${strategist}\n\n${marketAuditSummary}`
     : strategist;
 
   const [copywriter, seo, conversion, distribution, reddit] = await Promise.all([
-    runCopywriterAgent(websiteContent, strategist),
-    runSeoAgent(websiteContent, seoContext),
-    runConversionAgent(websiteContent, strategist),
-    runDistributionAgent(websiteContent, strategist),
-    redditAgent(productInfo.name || "this product", productInfo.description || "an AI solution")
+    withAgentEvent(
+      "copywriter",
+      "@Strategist — got the brief. Crafting hooks with PAS framework…",
+      "Copy analysis complete.",
+      () => runCopywriterAgent(websiteContent, strategist),
+      onEvent
+    ),
+    withAgentEvent(
+      "seo",
+      "@Strategist — received. Running keyword analysis + GEO audit…",
+      "SEO opportunities identified.",
+      () => runSeoAgent(websiteContent, seoContext),
+      onEvent
+    ),
+    withAgentEvent(
+      "conversion",
+      "@Strategist — locked in. Auditing landing page with LIFT model…",
+      "Conversion audit complete.",
+      () => runConversionAgent(websiteContent, strategist),
+      onEvent
+    ),
+    withAgentEvent(
+      "distribution",
+      "@Strategist — ICP noted. Mapping growth channels…",
+      "Distribution plan mapped.",
+      () => runDistributionAgent(websiteContent, strategist),
+      onEvent
+    ),
+    withAgentEvent(
+      "reddit",
+      "Searching Reddit for live discussions about this product…",
+      "Reddit scan complete.",
+      () => redditAgent(productInfo.name || "this product", productInfo.description || "an AI solution"),
+      onEvent
+    )
   ]);
 
   return {
@@ -322,4 +359,5 @@ export async function runAllAgents(
     reddit
   };
 }
+
 

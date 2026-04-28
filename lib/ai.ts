@@ -8,6 +8,7 @@ import {
   formatMarketAuditForAgents,
   formatMarketAuditForAggregator
 } from "./market-audit-bridge";
+import type { AgentEventCallback } from "./agent-events";
 
 type WebsiteContext = {
   url: string;
@@ -146,13 +147,16 @@ function buildMemoryPrompt(memory: MemoryContext) {
  * ──────────────────────────────────────────────────────── */
 export async function generateGrowthAnalysis(
   context: WebsiteContext,
-  memory: MemoryContext
+  memory: MemoryContext,
+  onEvent?: AgentEventCallback
 ): Promise<MultiAgentAnalysis> {
   // Step 1: Fetch both data bridges from Redis in parallel (non-blocking)
+  onEvent?.({ agent: "system", status: "thinking", message: "Fetching outreach & market data…", timestamp: Date.now() });
   const [outreachCtx, auditCtx] = await Promise.all([
     getOutreachContext(context.url).catch(() => null),
     getMarketAuditContext(context.url).catch(() => null)
   ]);
+  onEvent?.({ agent: "system", status: "done", message: "Data bridges loaded.", timestamp: Date.now() });
 
   // Step 2: Build the base website content with memory
   const baseContent = [buildWebsiteContextPrompt(context), buildMemoryPrompt(memory)].join("\n\n");
@@ -171,10 +175,17 @@ export async function generateGrowthAnalysis(
 
   // Step 5: Run all agents — pass market audit summary for SEO agent injection
   const marketAuditForSeo = auditCtx ? formatMarketAuditForAgents(auditCtx) : undefined;
-  const agentOutputs = await runAllAgents(websiteContent, marketAuditForSeo);
+  const agentOutputs = await runAllAgents(websiteContent, marketAuditForSeo, onEvent);
 
   // Step 6: Critic Pass — quality-check all agent outputs before aggregation
+  onEvent?.({ agent: "critic", status: "thinking", message: "Auditing all outputs for hallucinations and quality…", timestamp: Date.now() });
   const criticResult = await runCriticPass(agentOutputs, websiteContent, productName, context.url);
+  onEvent?.({
+    agent: "critic",
+    status: "done",
+    message: `Quality score: ${criticResult.overall_quality_score}/10. ${criticResult.summary}`,
+    timestamp: Date.now()
+  });
   console.log(`[Critic] Quality Score: ${criticResult.overall_quality_score}/10 | Product: ${productName}`);
   console.log(`[Critic] Summary: ${criticResult.summary}`);
   for (const agent of ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit"] as const) {
@@ -185,6 +196,7 @@ export async function generateGrowthAnalysis(
   }
 
   // Step 7: Aggregate — pass critic results + productName alongside contexts
+  onEvent?.({ agent: "aggregator", status: "thinking", message: "Synthesizing all specialist reports into a unified growth plan…", timestamp: Date.now() });
   const outreachForAggregator = outreachCtx ? formatOutreachContext(outreachCtx) : undefined;
   const auditForAggregator = auditCtx ? formatMarketAuditForAggregator(auditCtx) : undefined;
   const markdown = await aggregateAgentOutputs(
@@ -196,6 +208,8 @@ export async function generateGrowthAnalysis(
     criticResult,
     productName
   );
+
+  onEvent?.({ agent: "aggregator", status: "done", message: "Growth plan finalized.", timestamp: Date.now() });
 
   return {
     markdown,
