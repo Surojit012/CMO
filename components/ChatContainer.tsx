@@ -574,9 +574,8 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
         })
       });
 
-      // If validation failed, the API returns plain JSON (not SSE)
-      const contentType = response.headers.get("content-type") || "";
-      if (!contentType.includes("text/event-stream")) {
+      // Validation errors return JSON with 4xx status; success returns SSE stream with 200
+      if (!response.ok) {
         const resData = (await response.json()) as AnalyzeErrorResponse;
         throw new Error(resData.error || "Analysis failed.");
       }
