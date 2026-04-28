@@ -62,93 +62,96 @@ export async function POST(req: NextRequest) {
     return NextResponse.json<AnalyzeErrorResponse>({ error: message }, { status: 400 });
   }
 
-  /* ── SSE Stream (agent events + final result) ──────────── */
+  /* ── SSE Stream via TransformStream (flush-friendly on Vercel) ── */
   const encoder = new TextEncoder();
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (eventName: string, data: unknown) => {
-        controller.enqueue(encoder.encode(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`));
+  const send = async (eventName: string, data: unknown) => {
+    await writer.write(encoder.encode(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`));
+  };
+
+  const emitAgentEvent = async (event: AgentEvent) => {
+    await send("agent", event);
+  };
+
+  // Run the pipeline in the background — each write flushes immediately
+  const pipeline = (async () => {
+    try {
+      await emitAgentEvent({ agent: "system", status: "thinking", message: "Scraping website content…", timestamp: Date.now() });
+      const extracted = await fetchWebsiteContent(url.toString());
+      await emitAgentEvent({ agent: "system", status: "done", message: "Website scraped successfully.", timestamp: Date.now() });
+
+      await emitAgentEvent({ agent: "system", status: "thinking", message: "Loading memory context…", timestamp: Date.now() });
+      const memory = await getMemoryContext(url.toString(), url.hostname);
+      await emitAgentEvent({ agent: "system", status: "done", message: "Memory loaded.", timestamp: Date.now() });
+
+      const analysisId = crypto.randomUUID();
+
+      // Wrap the sync callback to async-write events
+      const { markdown, analysis, agents } = await generateGrowthAnalysis(
+        { url: url.toString(), ...extracted },
+        memory,
+        (evt: AgentEvent) => { void send("agent", evt); }
+      );
+
+      // Persist results
+      await storeAnalysis({
+        id: analysisId,
+        userId: userId!,
+        encryptedOutput: encrypt(
+          JSON.stringify({
+            websiteUrl: url.toString(),
+            hostname: url.hostname,
+            extractedContent: extracted,
+            aiOutput: { markdown, analysis, agents },
+            feedback: null
+          })
+        ),
+        timestamp: new Date().toISOString()
+      });
+
+      const responsePayload: AnalyzeSuccessResponse = {
+        analysisId,
+        url: url.toString(),
+        markdown,
+        analysis,
+        agents,
+        extracted
       };
 
-      const emitAgentEvent = (event: AgentEvent) => {
-        send("agent", event);
-      };
-
-      try {
-        // Emit initial scraping event
-        emitAgentEvent({ agent: "system", status: "thinking", message: "Scraping website content…", timestamp: Date.now() });
-        const extracted = await fetchWebsiteContent(url.toString());
-        emitAgentEvent({ agent: "system", status: "done", message: "Website scraped successfully.", timestamp: Date.now() });
-
-        emitAgentEvent({ agent: "system", status: "thinking", message: "Loading memory context…", timestamp: Date.now() });
-        const memory = await getMemoryContext(url.toString(), url.hostname);
-        emitAgentEvent({ agent: "system", status: "done", message: "Memory loaded.", timestamp: Date.now() });
-
-        const analysisId = crypto.randomUUID();
-
-        // Run the full pipeline with live events
-        const { markdown, analysis, agents } = await generateGrowthAnalysis(
-          { url: url.toString(), ...extracted },
-          memory,
-          emitAgentEvent
-        );
-
-        // Persist results (same as before)
-        await storeAnalysis({
-          id: analysisId,
-          userId: userId!,
-          encryptedOutput: encrypt(
-            JSON.stringify({
-              websiteUrl: url.toString(),
-              hostname: url.hostname,
-              extractedContent: extracted,
-              aiOutput: { markdown, analysis, agents },
-              feedback: null
-            })
-          ),
-          timestamp: new Date().toISOString()
-        });
-
-        const responsePayload: AnalyzeSuccessResponse = {
-          analysisId,
-          url: url.toString(),
-          markdown,
-          analysis,
-          agents,
-          extracted
-        };
-
-        if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-          try {
-            await supabaseServer.from("saved_reports").insert({
-              id: analysisId,
-              user_id: userId,
-              session_id: sessionId,
-              url: url.toString(),
-              type: "analysis",
-              data: responsePayload as any
-            });
-          } catch (err) {
-            console.error("Supabase insert error [analyze]:", err);
-          }
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        try {
+          await supabaseServer.from("saved_reports").insert({
+            id: analysisId,
+            user_id: userId,
+            session_id: sessionId,
+            url: url.toString(),
+            type: "analysis",
+            data: responsePayload as any
+          });
+        } catch (err) {
+          console.error("Supabase insert error [analyze]:", err);
         }
-
-        // Send final result
-        send("result", responsePayload);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Unknown server error.";
-        send("error", { error: message || "Analysis failed." });
-      } finally {
-        controller.close();
       }
-    }
-  });
 
-  return new Response(stream, {
+      await send("result", responsePayload);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown server error.";
+      await send("error", { error: message || "Analysis failed." });
+    } finally {
+      await writer.close();
+    }
+  })();
+
+  // Don't await the pipeline — return the readable side immediately so chunks flush
+  void pipeline;
+
+  return new Response(readable, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
       Connection: "keep-alive"
     }
   });
