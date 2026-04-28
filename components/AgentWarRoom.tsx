@@ -38,20 +38,20 @@ const PIPELINE: SimEvent[] = [
 ];
 
 /* ── Agent metadata ──────────────────────────────────────── */
-const AGENT_META: Record<string, { label: string; icon: string; color: string }> = {
-  system:       { label: "System",       icon: "⚙️",  color: "#71717a" },
-  strategist:   { label: "Strategist",   icon: "🎯",  color: "#0ea5e9" },
-  copywriter:   { label: "Copywriter",   icon: "✍️",  color: "#a855f7" },
-  seo:          { label: "SEO Agent",    icon: "🔍",  color: "#22c55e" },
-  conversion:   { label: "Conversion",   icon: "📊",  color: "#f59e0b" },
-  distribution: { label: "Distribution", icon: "📢",  color: "#ef4444" },
-  reddit:       { label: "Reddit Intel", icon: "🔴",  color: "#ff4500" },
-  critic:       { label: "Critic",       icon: "🔎",  color: "#6366f1" },
-  aggregator:   { label: "Aggregator",   icon: "🧠",  color: "#14b8a6" },
+const AGENT_META: Record<string, { label: string; abbr: string; color: string }> = {
+  system:       { label: "System",       abbr: "SYS", color: "#71717a" },
+  strategist:   { label: "Strategist",   abbr: "STR", color: "#0ea5e9" },
+  copywriter:   { label: "Copywriter",   abbr: "CPY", color: "#a855f7" },
+  seo:          { label: "SEO Agent",    abbr: "SEO", color: "#22c55e" },
+  conversion:   { label: "Conversion",   abbr: "CRO", color: "#f59e0b" },
+  distribution: { label: "Distribution", abbr: "DST", color: "#ef4444" },
+  reddit:       { label: "Reddit Intel", abbr: "RDT", color: "#ff4500" },
+  critic:       { label: "Critic",       abbr: "QA",  color: "#6366f1" },
+  aggregator:   { label: "Aggregator",   abbr: "AGG", color: "#14b8a6" },
 };
 
 function getMeta(agent: string) {
-  return AGENT_META[agent] ?? { label: agent, icon: "🤖", color: "#71717a" };
+  return AGENT_META[agent] ?? { label: agent, abbr: "--", color: "#71717a" };
 }
 
 /* ── Component ───────────────────────────────────────────── */
@@ -205,12 +205,12 @@ export function AgentWarRoom({ active }: AgentWarRoomProps) {
                   {/* Status indicator */}
                   <div className="mt-0.5 flex-shrink-0">
                     {isDone ? (
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full text-[9px]" style={{ backgroundColor: meta.color + "18" }}>
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-bold" style={{ backgroundColor: meta.color + "18", color: meta.color }}>
                         ✓
                       </span>
                     ) : (
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full text-[10px]">
-                        {meta.icon}
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full text-[7px] font-bold tracking-tight" style={{ backgroundColor: meta.color + "18", color: meta.color }}>
+                        {meta.abbr}
                       </span>
                     )}
                   </div>
