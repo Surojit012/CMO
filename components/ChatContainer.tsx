@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { AgentEvent } from "@/lib/agent-events";
 import { useCreateWallet, usePrivy, useToken, useWallets } from "@privy-io/react-auth";
 import {
   checkAndPayIfNeeded,
@@ -87,7 +86,6 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
   const [currentStep, setCurrentStep] = useState<(typeof loadingSteps)[number] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState("");
-  const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
   const [isWarRoomActive, setIsWarRoomActive] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [compareUrl, setCompareUrl] = useState("");
@@ -555,8 +553,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       }
     ]);
 
-    // Activate War Room for live agent events
-    setAgentEvents([]);
+    // Activate War Room
     setIsWarRoomActive(true);
 
     let data: AnalyzeSuccessResponse;
@@ -574,65 +571,13 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
         })
       });
 
-      // Validation errors return JSON with 4xx status; success returns SSE stream with 200
-      if (!response.ok) {
-        const resData = (await response.json()) as AnalyzeErrorResponse;
-        throw new Error(resData.error || "Analysis failed.");
+      const resData = (await response.json()) as AnalyzeSuccessResponse | AnalyzeErrorResponse;
+
+      if (!response.ok || "error" in resData) {
+        throw new Error("error" in resData ? resData.error : "Analysis failed.");
       }
 
-      // Read SSE stream for live agent events
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let finalResult: AnalyzeSuccessResponse | null = null;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const chunks = buffer.split("\n\n");
-        buffer = chunks.pop() || "";
-
-        for (const chunk of chunks) {
-          if (!chunk.trim()) continue;
-
-          const lines = chunk.split("\n");
-          let eventName = "";
-          let eventData = "";
-
-          for (const line of lines) {
-            if (line.startsWith("event: ")) eventName = line.slice(7);
-            else if (line.startsWith("data: ")) eventData = line.slice(6);
-          }
-
-          if (!eventData) continue;
-
-          try {
-            const parsed = JSON.parse(eventData);
-
-            if (eventName === "agent") {
-              setAgentEvents((prev) => [...prev, parsed as AgentEvent]);
-            } else if (eventName === "result") {
-              finalResult = parsed as AnalyzeSuccessResponse;
-            } else if (eventName === "error") {
-              throw new Error(parsed.error || "Analysis failed.");
-            }
-          } catch (parseErr) {
-            if (parseErr instanceof Error && parseErr.message !== "Analysis failed.") {
-              // JSON parse error on a chunk — skip it
-              continue;
-            }
-            throw parseErr;
-          }
-        }
-      }
-
-      if (!finalResult) {
-        throw new Error("Analysis stream ended without a result.");
-      }
-
-      data = finalResult;
+      data = resData as AnalyzeSuccessResponse;
     } catch (submitError) {
       if (submitError instanceof Error && submitError.name === "AbortError") {
         setIsWarRoomActive(false);
@@ -1024,7 +969,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
           )
         )}
 
-        {isWarRoomActive && activeTab === "analysis" ? <AgentWarRoom events={agentEvents} /> : null}
+        {isWarRoomActive && activeTab === "analysis" ? <AgentWarRoom active={isWarRoomActive} /> : null}
         {currentStep && !isWarRoomActive ? <LoadingState currentStep={currentStep} steps={[...loadingSteps]} /> : null}
       </div>
 

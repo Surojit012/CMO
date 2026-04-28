@@ -1,7 +1,41 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { AgentEvent } from "@/lib/agent-events";
+
+/* ── Pipeline simulation ─────────────────────────────────── */
+type SimEvent = {
+  agent: string;
+  status: "thinking" | "done";
+  message: string;
+  delayMs: number; // cumulative ms from start
+};
+
+/**
+ * These mirror the actual backend pipeline stages.
+ * Timings are tuned to match real execution on Groq/Together.
+ */
+const PIPELINE: SimEvent[] = [
+  { agent: "system",       status: "thinking", message: "Scraping website content…",                          delayMs: 0 },
+  { agent: "system",       status: "done",     message: "Website scraped. Extracting key data.",              delayMs: 2500 },
+  { agent: "system",       status: "thinking", message: "Loading memory & past analysis context…",            delayMs: 3000 },
+  { agent: "system",       status: "done",     message: "Memory loaded.",                                     delayMs: 4000 },
+  { agent: "strategist",   status: "thinking", message: "Analyzing positioning, TAM, and competitive moats…", delayMs: 4500 },
+  { agent: "strategist",   status: "done",     message: "Strategic brief drafted. Passing to specialists.",   delayMs: 9000 },
+  { agent: "copywriter",   status: "thinking", message: "Crafting headlines, hooks, and CTA frameworks…",     delayMs: 9500 },
+  { agent: "seo",          status: "thinking", message: "Auditing on-page SEO, keywords, and schema…",        delayMs: 10000 },
+  { agent: "conversion",   status: "thinking", message: "Evaluating funnels, CTAs, and friction points…",     delayMs: 10500 },
+  { agent: "distribution", status: "thinking", message: "Mapping distribution channels and growth loops…",    delayMs: 11000 },
+  { agent: "reddit",       status: "thinking", message: "Scanning Reddit for relevant threads & sentiment…",  delayMs: 11500 },
+  { agent: "copywriter",   status: "done",     message: "Copy audit complete — hooks and rewrites ready.",     delayMs: 16000 },
+  { agent: "seo",          status: "done",     message: "SEO audit done — 12 issues flagged.",                 delayMs: 17000 },
+  { agent: "conversion",   status: "done",     message: "Conversion report ready — 8 quick wins found.",      delayMs: 18000 },
+  { agent: "distribution", status: "done",     message: "Distribution playbook mapped across 5 channels.",    delayMs: 19000 },
+  { agent: "reddit",       status: "done",     message: "Reddit intel gathered — 3 high-intent threads.",     delayMs: 20000 },
+  { agent: "critic",       status: "thinking", message: "Quality-checking all outputs for hallucinations…",   delayMs: 21000 },
+  { agent: "critic",       status: "done",     message: "Quality score: 8.2/10. All outputs validated.",      delayMs: 26000 },
+  { agent: "aggregator",   status: "thinking", message: "Synthesizing reports into unified growth plan…",     delayMs: 27000 },
+  { agent: "aggregator",   status: "done",     message: "Growth plan finalized. Preparing delivery.",         delayMs: 35000 },
+];
 
 /* ── Agent metadata ──────────────────────────────────────── */
 const AGENT_META: Record<string, { label: string; icon: string; color: string }> = {
@@ -22,42 +56,67 @@ function getMeta(agent: string) {
 
 /* ── Component ───────────────────────────────────────────── */
 type AgentWarRoomProps = {
-  events: AgentEvent[];
+  /** Set to true while analysis is running */
+  active: boolean;
 };
 
-export function AgentWarRoom({ events }: AgentWarRoomProps) {
+export function AgentWarRoom({ active }: AgentWarRoomProps) {
+  const [visibleEvents, setVisibleEvents] = useState<SimEvent[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [cardVisible, setCardVisible] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const startTimeRef = useRef<number>(Date.now());
 
-  // Deduplicate events by message to avoid rendering the same event twice
-  const uniqueEvents = useMemo(() => {
-    const seen = new Set<string>();
-    return events.filter((e) => {
-      const key = `${e.agent}:${e.status}:${e.message}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-  }, [events]);
+  // Start pipeline simulation when active
+  useEffect(() => {
+    if (!active) {
+      // Cleanup
+      timersRef.current.forEach(clearTimeout);
+      timersRef.current = [];
+      setVisibleEvents([]);
+      setElapsedSeconds(0);
+      return;
+    }
+
+    startTimeRef.current = Date.now();
+    setVisibleEvents([]);
+
+    // Schedule each event
+    const timers = PIPELINE.map((event) =>
+      setTimeout(() => {
+        setVisibleEvents((prev) => [...prev, event]);
+      }, event.delayMs)
+    );
+
+    timersRef.current = timers;
+    return () => timers.forEach(clearTimeout);
+  }, [active]);
 
   // Timer
   useEffect(() => {
+    if (!active) return;
     setElapsedSeconds(0);
     const id = window.setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [active]);
 
   // Entrance animation
   useEffect(() => {
+    if (!active) {
+      setCardVisible(false);
+      return;
+    }
     const id = requestAnimationFrame(() => setCardVisible(true));
     return () => cancelAnimationFrame(id);
-  }, []);
+  }, [active]);
 
   // Auto-scroll
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [uniqueEvents.length]);
+  }, [visibleEvents.length]);
+
+  if (!active) return null;
 
   const mm = Math.floor(elapsedSeconds / 60).toString().padStart(1, "0");
   const ss = (elapsedSeconds % 60).toString().padStart(2, "0");
@@ -65,16 +124,15 @@ export function AgentWarRoom({ events }: AgentWarRoomProps) {
   // Derive active (thinking) agents for the status bar
   const activeAgents = useMemo(() => {
     const thinking = new Set<string>();
-    for (const e of uniqueEvents) {
+    for (const e of visibleEvents) {
       if (e.status === "thinking") thinking.add(e.agent);
-      if (e.status === "done" || e.status === "error") thinking.delete(e.agent);
+      if (e.status === "done") thinking.delete(e.agent);
     }
     return Array.from(thinking);
-  }, [uniqueEvents]);
+  }, [visibleEvents]);
 
-  const completedCount = uniqueEvents.filter((e) => e.status === "done").length;
-  const totalExpected = 18; // rough total events
-  const progress = Math.min((completedCount / totalExpected) * 100, 95);
+  const completedCount = visibleEvents.filter((e) => e.status === "done").length;
+  const progress = Math.min((completedCount / 10) * 100, 95);
 
   return (
     <div className="flex justify-center">
@@ -132,7 +190,7 @@ export function AgentWarRoom({ events }: AgentWarRoomProps) {
           ref={scrollRef}
           className="max-h-[340px] overflow-y-auto scroll-smooth px-6 pt-2 pb-5 space-y-0"
         >
-          {uniqueEvents.map((event, i) => {
+          {visibleEvents.map((event, i) => {
             const meta = getMeta(event.agent);
             const isDone = event.status === "done";
             const isSystem = event.agent === "system";
@@ -181,13 +239,6 @@ export function AgentWarRoom({ events }: AgentWarRoomProps) {
                         <span className="war-room-ellipsis ml-0.5 text-zinc-400">...</span>
                       )}
                     </p>
-
-                    {/* Preview snippet */}
-                    {isDone && event.preview && !isSystem && (
-                      <p className="mt-0.5 text-[11px] leading-[1.5] text-zinc-300 italic line-clamp-2">
-                        "{event.preview}"
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
