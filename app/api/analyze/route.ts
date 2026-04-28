@@ -62,92 +62,97 @@ export async function POST(req: NextRequest) {
     return NextResponse.json<AnalyzeErrorResponse>({ error: message }, { status: 400 });
   }
 
-  /* ── SSE Stream via TransformStream (flush-friendly on Vercel) ── */
+  /* ── SSE Stream ────────────────────────────────────────── */
   const encoder = new TextEncoder();
-  const { readable, writable } = new TransformStream();
-  const writer = writable.getWriter();
 
-  const send = async (eventName: string, data: unknown) => {
-    await writer.write(encoder.encode(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`));
-  };
-
-  const emitAgentEvent = async (event: AgentEvent) => {
-    await send("agent", event);
-  };
-
-  // Run the pipeline in the background — each write flushes immediately
-  const pipeline = (async () => {
-    try {
-      await emitAgentEvent({ agent: "system", status: "thinking", message: "Scraping website content…", timestamp: Date.now() });
-      const extracted = await fetchWebsiteContent(url.toString());
-      await emitAgentEvent({ agent: "system", status: "done", message: "Website scraped successfully.", timestamp: Date.now() });
-
-      await emitAgentEvent({ agent: "system", status: "thinking", message: "Loading memory context…", timestamp: Date.now() });
-      const memory = await getMemoryContext(url.toString(), url.hostname);
-      await emitAgentEvent({ agent: "system", status: "done", message: "Memory loaded.", timestamp: Date.now() });
-
-      const analysisId = crypto.randomUUID();
-
-      // Wrap the sync callback to async-write events
-      const { markdown, analysis, agents } = await generateGrowthAnalysis(
-        { url: url.toString(), ...extracted },
-        memory,
-        (evt: AgentEvent) => { void send("agent", evt); }
-      );
-
-      // Persist results
-      await storeAnalysis({
-        id: analysisId,
-        userId: userId!,
-        encryptedOutput: encrypt(
-          JSON.stringify({
-            websiteUrl: url.toString(),
-            hostname: url.hostname,
-            extractedContent: extracted,
-            aiOutput: { markdown, analysis, agents },
-            feedback: null
-          })
-        ),
-        timestamp: new Date().toISOString()
-      });
-
-      const responsePayload: AnalyzeSuccessResponse = {
-        analysisId,
-        url: url.toString(),
-        markdown,
-        analysis,
-        agents,
-        extracted
+  const stream = new ReadableStream({
+    start(controller) {
+      // Helper: enqueue an SSE frame
+      const send = (eventName: string, data: unknown) => {
+        controller.enqueue(
+          encoder.encode(`event: ${eventName}\ndata: ${JSON.stringify(data)}\n\n`)
+        );
       };
 
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      // Send an SSE comment immediately to prime the HTTP connection.
+      // This forces Vercel to start streaming instead of buffering.
+      controller.enqueue(encoder.encode(": connected\n\n"));
+
+      // Run the full pipeline as a detached async IIFE.
+      // start() returns synchronously so the Response is sent immediately.
+      (async () => {
         try {
-          await supabaseServer.from("saved_reports").insert({
+          send("agent", { agent: "system", status: "thinking", message: "Scraping website content…", timestamp: Date.now() });
+
+          const extracted = await fetchWebsiteContent(url.toString());
+          send("agent", { agent: "system", status: "done", message: "Website scraped successfully.", timestamp: Date.now() });
+
+          send("agent", { agent: "system", status: "thinking", message: "Loading memory context…", timestamp: Date.now() });
+          const memory = await getMemoryContext(url.toString(), url.hostname);
+          send("agent", { agent: "system", status: "done", message: "Memory loaded.", timestamp: Date.now() });
+
+          const analysisId = crypto.randomUUID();
+
+          // Run the full agent pipeline with live events
+          const { markdown, analysis, agents } = await generateGrowthAnalysis(
+            { url: url.toString(), ...extracted },
+            memory,
+            (evt: AgentEvent) => { send("agent", evt); }
+          );
+
+          // Persist results
+          await storeAnalysis({
             id: analysisId,
-            user_id: userId,
-            session_id: sessionId,
-            url: url.toString(),
-            type: "analysis",
-            data: responsePayload as any
+            userId: userId!,
+            encryptedOutput: encrypt(
+              JSON.stringify({
+                websiteUrl: url.toString(),
+                hostname: url.hostname,
+                extractedContent: extracted,
+                aiOutput: { markdown, analysis, agents },
+                feedback: null
+              })
+            ),
+            timestamp: new Date().toISOString()
           });
-        } catch (err) {
-          console.error("Supabase insert error [analyze]:", err);
+
+          const responsePayload: AnalyzeSuccessResponse = {
+            analysisId,
+            url: url.toString(),
+            markdown,
+            analysis,
+            agents,
+            extracted
+          };
+
+          if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            try {
+              await supabaseServer.from("saved_reports").insert({
+                id: analysisId,
+                user_id: userId,
+                session_id: sessionId,
+                url: url.toString(),
+                type: "analysis",
+                data: responsePayload as any
+              });
+            } catch (err) {
+              console.error("Supabase insert error [analyze]:", err);
+            }
+          }
+
+          // Send final result
+          send("result", responsePayload);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown server error.";
+          send("error", { error: message || "Analysis failed." });
+        } finally {
+          controller.close();
         }
-      }
-
-      await send("result", responsePayload);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown server error.";
-      await send("error", { error: message || "Analysis failed." });
-    } finally {
-      await writer.close();
+      })();
     }
-  })();
+  });
 
-  // Don't await the pipeline — return the readable side immediately so chunks flush
-  void pipeline;
-
-  return new Response(readable, {
+  return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",
