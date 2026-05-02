@@ -836,46 +836,76 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
           </div>
         )}
 
-        <section className="mx-auto flex w-full max-w-[700px] flex-1 flex-col px-3 pb-44 pt-4 sm:px-5 sm:pb-40 sm:pt-6 md:px-6 md:pb-44 md:pt-8 relative">
+        <section className="mx-auto flex w-full max-w-[700px] flex-1 flex-col px-3 pb-44 pt-6 sm:px-5 sm:pb-40 sm:pt-10 md:px-6 md:pb-44 md:pt-14 relative">
+          <header className="mb-6 space-y-1.5 text-center sm:mb-10 sm:space-y-2 md:mb-14">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-950">CMO</p>
+            <p className="text-sm text-zinc-500">Your AI Growth Team</p>
+          </header>
 
-          {/* Minimal Tab Switcher — underline style */}
+          {/* Tab Switcher */}
           <div className="flex justify-center mb-4 sm:mb-6">
-            <nav className="flex items-center gap-6 sm:gap-8">
-              <button
-                onClick={() => { setActiveTab('analysis'); setCompareMode(false); setComparisonResult(null); }}
-                className={`relative pb-2 text-[13px] sm:text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'analysis' 
-                    ? 'text-zinc-950' 
-                    : 'text-zinc-400 hover:text-zinc-600'
-                }`}
-              >
-                Growth
-                {activeTab === 'analysis' && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-zinc-950" />}
-              </button>
-              <button
-                onClick={() => { setActiveTab('audit'); setCompareMode(false); setComparisonResult(null); }}
-                className={`relative pb-2 text-[13px] sm:text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'audit' 
-                    ? 'text-zinc-950' 
-                    : 'text-zinc-400 hover:text-zinc-600'
-                }`}
-              >
-                Audit
-                {activeTab === 'audit' && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-zinc-950" />}
-              </button>
-              <button
-                onClick={() => { setActiveTab('outreach'); setCompareMode(false); setComparisonResult(null); }}
-                className={`relative pb-2 text-[13px] sm:text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'outreach' 
-                    ? 'text-zinc-950' 
-                    : 'text-zinc-400 hover:text-zinc-600'
-                }`}
-              >
-                Outreach
-                {activeTab === 'outreach' && <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-zinc-950" />}
-              </button>
-            </nav>
+
+        <div className="flex items-center rounded-full bg-zinc-100/80 p-1 ring-1 ring-black/5">
+          <button
+            onClick={() => { setActiveTab('analysis'); setCompareMode(false); setComparisonResult(null); }}
+            className={`rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 ${
+              activeTab === 'analysis' 
+                ? 'bg-zinc-950 text-white shadow-md' 
+                : 'text-zinc-500 hover:text-zinc-800'
+            }`}
+          >
+            Growth Analysis
+          </button>
+          <button
+            onClick={() => { setActiveTab('audit'); setCompareMode(false); setComparisonResult(null); }}
+            className={`rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 ${
+              activeTab === 'audit' 
+                ? 'bg-zinc-950 text-white shadow-md' 
+                : 'text-zinc-500 hover:text-zinc-800'
+            }`}
+          >
+            Market Audit
+          </button>
+          <button
+            onClick={() => { setActiveTab('outreach'); setCompareMode(false); setComparisonResult(null); }}
+            className={`rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 ${
+              activeTab === 'outreach' 
+                ? 'bg-zinc-950 text-white shadow-md' 
+                : 'text-zinc-500 hover:text-zinc-800'
+            }`}
+          >
+            Outreach Engine
+          </button>
+        </div>
+      </div>
+
+      {/* Compare Mode Toggle — only visible on analysis tab */}
+      {activeTab === "analysis" && (
+        <div className="flex justify-center mb-6 sm:mb-10">
+          <div className="flex items-center rounded-full bg-zinc-50 p-0.5 ring-1 ring-zinc-200/80">
+            <button
+              onClick={() => { setCompareMode(false); setComparisonResult(null); }}
+              className={`rounded-full px-4 py-1.5 text-[11px] sm:text-xs font-semibold transition-all duration-200 ${
+                !compareMode
+                  ? 'bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200/60'
+                  : 'text-zinc-400 hover:text-zinc-600'
+              }`}
+            >
+              Single Analysis
+            </button>
+            <button
+              onClick={() => { setCompareMode(true); setComparisonResult(null); }}
+              className={`rounded-full px-4 py-1.5 text-[11px] sm:text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${
+                compareMode
+                  ? 'bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200/60'
+                  : 'text-zinc-400 hover:text-zinc-600'
+              }`}
+            >
+              <Swords className="h-3 w-3" /> Compare Mode
+            </button>
           </div>
+        </div>
+      )}
 
       <div
         ref={viewportRef}
@@ -887,21 +917,17 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
         )}
 
         {activeTab !== "outreach" && !hasMessages && !comparisonResult ? (
-          <section className="flex min-h-[25vh] flex-col items-center justify-center text-center sm:min-h-[35vh] md:min-h-[40vh]">
-            <div className="space-y-2 sm:space-y-3">
-              <h1 className="text-xl font-semibold tracking-[-0.03em] text-zinc-950 sm:text-2xl md:text-3xl">
-                {compareMode 
-                  ? "Compare two sites head-to-head." 
-                  : activeTab === "audit"
-                    ? "Deep competitive intelligence."
-                    : "Drop in a URL. Get a growth strategy back."}
+          <section className="flex min-h-[30vh] flex-col items-center justify-center text-center sm:min-h-[45vh] md:min-h-[52vh]">
+            <div className="space-y-3 sm:space-y-4">
+              <h1 className="text-2xl font-semibold tracking-[-0.04em] text-zinc-950 sm:text-3xl md:text-4xl">
+                {compareMode ? "Compare two sites head-to-head." : "Drop in a URL. Get a growth strategy back."}
               </h1>
-              <p className="mx-auto max-w-md text-[13px] leading-6 text-zinc-400 sm:text-sm sm:leading-7">
+              <p className="mx-auto max-w-xl text-[13px] leading-6 text-zinc-500 sm:text-sm sm:leading-7 md:text-base">
                 {activeTab === "audit" 
-                  ? "AI-powered market audit with competitor analysis."
+                  ? "Deep competitive intelligence · $15 USDC per report"
                   : compareMode
-                    ? "Enter both URLs below. Get a battle card showing who wins."
-                    : "Strategy, hooks, SEO plays, conversion fixes — in one report."}
+                    ? "Enter your site and a competitor's URL. Get a battle card showing who wins and why."
+                    : "A minimal AI interface that audits your website like a sharp growth team, then returns structured strategy, hooks, SEO plays, conversion fixes, and distribution ideas."}
               </p>
             </div>
           </section>
@@ -949,7 +975,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 flex justify-center px-2 pb-3 sm:px-4 sm:pb-5 md:pb-7">
         <div className="pointer-events-auto w-full max-w-[740px]">
-          <div className="rounded-[24px] bg-gradient-to-t from-[#fafafa] via-[#fafafa]/95 to-transparent px-1 pt-6 sm:rounded-[32px] sm:pt-8">
+          <div className="rounded-[24px] bg-gradient-to-t from-[#f3f2ef] via-[#f3f2ef]/95 to-transparent px-1 pt-6 sm:rounded-[32px] sm:pt-10">
             
             {/* INLINE WEB3 PAYMENT UPSELL BANNER */}
             {activeTab !== "outreach" && showPaymentUpsell && !hasSufficientBalance && (
@@ -1026,28 +1052,9 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
                     </p>
                   </div>
                 )}
-
-                {/* Inline controls row: compare toggle + autonomous mode */}
-                <div className="flex items-center justify-between px-1 pt-1">
-                  {activeTab === "analysis" ? (
-                    <button
-                      onClick={() => { setCompareMode(!compareMode); setComparisonResult(null); }}
-                      className={`flex items-center gap-1.5 text-[11px] sm:text-xs font-medium transition-all duration-200 ${
-                        compareMode
-                          ? 'text-zinc-900'
-                          : 'text-zinc-400 hover:text-zinc-600'
-                      }`}
-                    >
-                      <Swords className="h-3 w-3" />
-                      {compareMode ? 'Exit compare' : 'Compare'}
-                    </button>
-                  ) : <span />}
-                  {user?.id && activeTab === 'analysis' && !compareMode ? (
-                    <AutonomousMode initialUrl={inputValue || messages.find(m => m.role === 'user')?.url || ""} />
-                  ) : <span />}
-                </div>
               </div>
             )}
+              {user?.id && activeTab === 'analysis' && !compareMode && <AutonomousMode initialUrl={inputValue || messages.find(m => m.role === 'user')?.url || ""} />}
             </div>
           </div>
         </div>
