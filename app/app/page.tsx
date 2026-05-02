@@ -110,33 +110,28 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen relative">
-      <nav className="sticky top-0 z-50 flex items-center justify-between gap-2 border-b border-zinc-200/60 bg-white/80 px-3 py-2 shadow-sm backdrop-blur-md sm:gap-3 sm:px-6 sm:py-3">
-        <div className="flex items-center gap-2">
-          <Link 
-            href="/" 
-            className="ml-1 text-[13px] font-bold uppercase tracking-[0.2em] text-zinc-950 transition hover:opacity-80 sm:ml-2 sm:text-[14px]"
-          >
-            C M O
-          </Link>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 ring-1 ring-zinc-200">
-            Beta
-          </span>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3">
+    <main className="min-h-screen relative bg-[#fafafa]">
+      <nav className="sticky top-0 z-50 flex items-center justify-between gap-2 border-b border-zinc-100 bg-white/90 px-4 py-2.5 backdrop-blur-xl sm:px-6 sm:py-3">
+        <Link 
+          href="/" 
+          className="text-[13px] font-bold uppercase tracking-[0.22em] text-zinc-950 transition hover:opacity-70 sm:text-[14px]"
+        >
+          C M O
+        </Link>
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <WalletPanel />
-          <div className="relative flex h-fit items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs text-zinc-700 shadow-sm ring-1 ring-zinc-200/80 backdrop-blur sm:gap-3 sm:px-4 sm:py-2 sm:text-sm">
+          <div className="relative flex items-center gap-2 rounded-full px-3 py-1.5 text-xs text-zinc-500 hover:bg-zinc-50 transition sm:gap-2.5 sm:px-3.5">
             {hasNewReportBadge && (
-              <span className="absolute -right-1 -top-1 flex h-3 w-3">
+              <span className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-zinc-400 opacity-75"></span>
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-zinc-950"></span>
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-zinc-950"></span>
               </span>
             )}
-            <span className="max-w-[100px] truncate sm:max-w-[220px]">{getUserLabel(user)}</span>
+            <span className="max-w-[80px] truncate text-[12px] sm:max-w-[160px]">{getUserLabel(user)}</span>
             <button
               type="button"
               onClick={logout}
-              className="rounded-full bg-zinc-900 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-zinc-800 sm:px-3 sm:text-xs"
+              className="text-[11px] font-medium text-zinc-400 transition hover:text-zinc-900 sm:text-xs"
             >
               Logout
             </button>
@@ -144,7 +139,7 @@ export default function Home() {
         </div>
       </nav>
       
-      <div className="mx-auto w-full max-w-[700px] px-3 mt-3 sm:px-5 sm:mt-4">
+      <div className="mx-auto w-full max-w-[700px] px-3 mt-2 sm:px-5 sm:mt-3">
         <NewReportBanner 
           onViewReport={(markdown, timestamp) => {
             setDailyReportModal({ markdown, timestamp });

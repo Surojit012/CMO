@@ -68,27 +68,25 @@ export function NewReportBanner({ onViewReport }: NewReportBannerProps) {
   if (!reportData?.output) return null;
 
   return (
-    <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-zinc-950 p-3 shadow-xl ring-1 ring-white/10 animate-in fade-in slide-in-from-top-4 duration-500 sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4">
-      <div className="flex gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-lg sm:h-10 sm:w-10 sm:text-xl">
+    <div className="mb-3 flex items-center justify-between gap-3 rounded-full bg-zinc-950/95 px-4 py-2 shadow-md ring-1 ring-white/10 animate-in fade-in slide-in-from-top-2 duration-300 sm:mb-4">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs">
           {reportData.hasNewReport ? "📊" : "📄"}
         </span>
-        <div className="flex flex-col">
-          <p className="text-[13px] font-semibold text-white sm:text-sm">
-            {reportData.hasNewReport ? "Your daily growth report is ready" : "Today's Daily Report"}
-          </p>
-          <p className="text-[11px] text-zinc-400 sm:text-xs">
-            Generated on {new Date(reportData.timestamp).toLocaleDateString()} at {new Date(reportData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </p>
-        </div>
+        <p className="text-[12px] font-medium text-zinc-300 truncate sm:text-[13px]">
+          {reportData.hasNewReport ? "Your daily growth report is ready" : "Today's Daily Report"}
+          <span className="hidden sm:inline text-zinc-500 ml-1.5">
+            · {new Date(reportData.timestamp).toLocaleDateString()}
+          </span>
+        </p>
       </div>
       
       <button
         onClick={handleViewReport}
         disabled={loading}
-        className="w-full rounded-full bg-white px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-zinc-100 disabled:opacity-50 sm:w-auto sm:px-5"
+        className="shrink-0 rounded-full bg-white px-3 py-1 text-[11px] font-bold text-zinc-950 transition hover:bg-zinc-100 disabled:opacity-50 sm:px-4 sm:py-1.5 sm:text-xs"
       >
-        {loading ? "Loading..." : (reportData.hasNewReport ? "View AI Report" : "Open Report")}
+        {loading ? "..." : "View AI Report"}
       </button>
     </div>
   );
