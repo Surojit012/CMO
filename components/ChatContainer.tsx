@@ -1001,7 +1001,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
 
         {/* ⚡ Arc Nanopayment Receipt */}
         {arcReceipt && activeTab === "analysis" && messages.length > 0 && !currentStep && !isWarRoomActive && (
-          <div className="mt-4 rounded-xl border border-white/10 bg-zinc-900 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-500">
+          <div className="mt-4 mb-6 rounded-xl border border-white/10 bg-zinc-900 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-500 relative z-50">
             <button
               onClick={() => setReceiptExpanded(!receiptExpanded)}
               className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800/50 transition-colors"
