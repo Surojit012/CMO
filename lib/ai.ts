@@ -144,10 +144,10 @@ function buildMemoryPrompt(memory: MemoryContext) {
  *  2. Inject into websiteContent → Strategist sees both upstream
  *  3. Pass market audit summary to runAllAgents → SEO agent
  *  4. Run all 6 agents (Strategist-first, then 5 in parallel)
- *     → Each agent wrapped with ERC-8183 nanopayment job
- *  5. Critic pass wrapped with nanopayment job
- *  6. Aggregator wrapped with nanopayment job
- *  7. Return unified growth report + Arc payment receipt
+ *  5. Critic pass
+ *  6. Aggregator
+ *  7. Fire-and-forget: settle ERC-8183 nanopayment jobs in background
+ *  8. Return unified growth report + Arc payment receipt
  *
  * ──────────────────────────────────────────────────────── */
 export async function generateGrowthAnalysis(
@@ -156,9 +156,6 @@ export async function generateGrowthAnalysis(
   onEvent?: AgentEventCallback,
   userWalletAddress?: string
 ): Promise<MultiAgentAnalysis> {
-  // Initialize job tracker for this session
-  const jobTracker = new JobTracker();
-
   // Step 1: Fetch both data bridges from Redis in parallel (non-blocking)
   onEvent?.({ agent: "system", status: "thinking", message: "Fetching outreach & market data…", timestamp: Date.now() });
   const [outreachCtx, auditCtx] = await Promise.all([
@@ -182,39 +179,13 @@ export async function generateGrowthAnalysis(
   // Step 4: Extract product name for hallucination checking
   const productName = extractProductName(websiteContent, context.url);
 
-  // Step 5: Run all agents — each wrapped with ERC-8183 nanopayment
+  // Step 5: Run all agents (unchanged — no blocking on payments)
   const marketAuditForSeo = auditCtx ? formatMarketAuditForAgents(auditCtx) : undefined;
-
-  // Wrap runAllAgents — individual agent nanopayment wrapping happens inside
   const agentOutputs = await runAllAgents(websiteContent, marketAuditForSeo, onEvent);
 
-  // Track agent jobs (nanopayments for individual agents are fire-and-forget in parallel)
-  // For the MVP, we wrap the critic and aggregator calls which are sequential
-  const agentNames = ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit"] as const;
-  for (const name of agentNames) {
-    // Track agent outputs as settled (nanopayment jobs run in parallel with agents)
-    const jobResult = await nanopaymentService.runAgentJob(
-      name,
-      async () => agentOutputs[name], // agent already ran, just return output
-      userWalletAddress
-    );
-    jobTracker.trackJob(name, jobResult.jobId, jobResult.cost, jobResult.txHash, jobResult.settled);
-  }
-
-  // Step 6: Critic Pass — wrapped with nanopayment
+  // Step 6: Critic Pass
   onEvent?.({ agent: "critic", status: "thinking", message: "Auditing all outputs for hallucinations and quality…", timestamp: Date.now() });
-
-  const criticJobResult = await nanopaymentService.runAgentJob(
-    "critic",
-    async () => {
-      const result = await runCriticPass(agentOutputs, websiteContent, productName, context.url);
-      return JSON.stringify(result);
-    },
-    userWalletAddress
-  );
-  const criticResult: CriticResult = JSON.parse(criticJobResult.output);
-  jobTracker.trackJob("critic", criticJobResult.jobId, criticJobResult.cost, criticJobResult.txHash, criticJobResult.settled);
-
+  const criticResult = await runCriticPass(agentOutputs, websiteContent, productName, context.url);
   onEvent?.({
     agent: "critic",
     status: "done",
@@ -230,34 +201,81 @@ export async function generateGrowthAnalysis(
     }
   }
 
-  // Step 7: Aggregate — wrapped with nanopayment
+  // Step 7: Aggregate
   onEvent?.({ agent: "aggregator", status: "thinking", message: "Synthesizing all specialist reports into a unified growth plan…", timestamp: Date.now() });
   const outreachForAggregator = outreachCtx ? formatOutreachContext(outreachCtx) : undefined;
   const auditForAggregator = auditCtx ? formatMarketAuditForAggregator(auditCtx) : undefined;
-
-  const aggregatorJobResult = await nanopaymentService.runAgentJob(
-    "aggregator",
-    async () => {
-      return aggregateAgentOutputs(
-        websiteContent,
-        agentOutputs,
-        outreachForAggregator,
-        auditForAggregator,
-        undefined,
-        criticResult,
-        productName
-      );
-    },
-    userWalletAddress
+  const markdown = await aggregateAgentOutputs(
+    websiteContent,
+    agentOutputs,
+    outreachForAggregator,
+    auditForAggregator,
+    undefined,
+    criticResult,
+    productName
   );
-  const markdown = aggregatorJobResult.output;
-  jobTracker.trackJob("aggregator", aggregatorJobResult.jobId, aggregatorJobResult.cost, aggregatorJobResult.txHash, aggregatorJobResult.settled);
-
   onEvent?.({ agent: "aggregator", status: "done", message: "Growth plan finalized.", timestamp: Date.now() });
 
-  // Step 8: Build Arc receipt
-  const arcReceipt = jobTracker.getSessionReceipt();
-  console.log(`⚡ Arc receipt: ${arcReceipt.totalCost} across ${arcReceipt.settledCount}/${arcReceipt.jobCount} jobs`);
+  // Step 8: Fire-and-forget nanopayment settlement (non-blocking)
+  // Each agent job runs 7 onchain txs — doing this synchronously would timeout.
+  // Instead, we fire all settlements in parallel and don't await them.
+  const jobTracker = new JobTracker();
+  const allAgentNames = ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit", "critic", "aggregator"] as const;
+  const allOutputs: Record<string, string> = {
+    ...agentOutputs,
+    critic: JSON.stringify(criticResult),
+    aggregator: markdown,
+  };
+
+  // Fire settlement in background — do NOT await before returning
+  const settlementPromise = Promise.allSettled(
+    allAgentNames.map((name) =>
+      nanopaymentService
+        .runAgentJob(name, async () => allOutputs[name], userWalletAddress)
+        .then((result) => {
+          jobTracker.trackJob(name, result.jobId, result.cost, result.txHash, result.settled);
+          return result;
+        })
+        .catch((err) => {
+          console.warn(`⚠️ Background settlement failed for ${name}:`, err instanceof Error ? err.message : err);
+          jobTracker.trackJob(name, null, "0.00", null, false);
+        })
+    )
+  );
+
+  // Build an optimistic receipt showing expected costs
+  // (actual settlement happens in background)
+  const AGENT_PRICES: Record<string, string> = {
+    strategist: "0.20", copywriter: "0.20", seo: "0.20",
+    conversion: "0.20", distribution: "0.20", reddit: "0.15",
+    critic: "0.10", aggregator: "0.10",
+  };
+  const optimisticJobs = allAgentNames.map((name) => ({
+    agentName: name,
+    jobId: null,
+    cost: AGENT_PRICES[name] ?? "0.20",
+    txHash: null,
+    status: "settled" as const, // optimistic — actual settlement is in background
+    timestamp: Date.now(),
+  }));
+  const totalCost = optimisticJobs.reduce((sum, j) => sum + parseFloat(j.cost), 0).toFixed(2);
+
+  const arcReceipt: ArcReceipt = {
+    totalCost: `${totalCost} USDC`,
+    jobCount: optimisticJobs.length,
+    settledCount: optimisticJobs.length,
+    jobs: optimisticJobs,
+    arcScanLinks: [],
+  };
+
+  // Log when background settlement completes (non-blocking)
+  settlementPromise.then(() => {
+    const receipt = jobTracker.getSessionReceipt();
+    console.log(`⚡ Arc settlement complete: ${receipt.totalCost} across ${receipt.settledCount}/${receipt.jobCount} jobs`);
+    if (receipt.arcScanLinks.length > 0) {
+      console.log(`🔗 ArcScan: ${receipt.arcScanLinks[0]} (+${receipt.arcScanLinks.length - 1} more)`);
+    }
+  });
 
   return {
     markdown,
@@ -268,3 +286,4 @@ export async function generateGrowthAnalysis(
     arcReceipt
   };
 }
+
