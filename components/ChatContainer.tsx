@@ -35,7 +35,7 @@ import { ArcReceipt as ArcReceiptPanel } from "./workspace/ArcReceipt";
 import { MarketAuditView } from "./workspace/MarketAuditView";
 import { OutreachView } from "./workspace/OutreachView";
 import { ProgressTracker, type AgentRow } from "./workspace/ProgressTracker";
-import { getAllAgentKeys } from "./workspace/AgentSelector";
+import { getAllAgentKeys, getAgentPrice } from "./workspace/AgentSelector";
 
 const loadingSteps = [
   "Strategist defining plan...",
@@ -663,6 +663,8 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
         role: "assistant",
         analysisId: data.analysisId,
         content: data.analysis,
+        rawAgents: data.agents,
+        selectedAgents: data.selectedAgents,
         feedback: null
       }
     ]);
@@ -851,8 +853,9 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
 
   const isNeedsPayment = activeTab === "analysis" ? freeRemaining === 0 : true;
   const showPaymentUpsell = isNeedsPayment;
-  const comparePrice = 2.70;
-  const singlePrice = activeTab === "analysis" ? 1.35 : 15;
+  const dynamicAgentPrice = getAgentPrice(selectedAgents);
+  const comparePrice = dynamicAgentPrice * 2;
+  const singlePrice = activeTab === "analysis" ? dynamicAgentPrice : 15;
   const requiredBalance = compareMode ? comparePrice : singlePrice;
   const hasSufficientBalance = parseFloat(usdcBalance) >= requiredBalance;
 
@@ -860,7 +863,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
   if (activeTab === "analysis" && compareMode) {
     if (showPaymentUpsell) {
       if (isFundingSetup) buttonLabel = "Preparing Wallet...";
-      else if (hasSufficientBalance) buttonLabel = "Pay $2.70 & Compare";
+      else if (hasSufficientBalance) buttonLabel = `Pay $${comparePrice.toFixed(2)} & Compare`;
       else buttonLabel = "Fund to Compare";
     } else {
       buttonLabel = "Compare Both Sites →";
@@ -868,7 +871,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
   } else if (activeTab === "analysis") {
     if (showPaymentUpsell) {
       if (isFundingSetup) buttonLabel = "Preparing Wallet...";
-      else if (hasSufficientBalance) buttonLabel = "Pay $1.35 & Analyze";
+      else if (hasSufficientBalance) buttonLabel = `Pay $${singlePrice.toFixed(2)} & Analyze`;
       else buttonLabel = "Fund to Analyze";
     } else {
       buttonLabel = "Analyze";
@@ -989,6 +992,8 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
                 <>
                   <ReportGrid
                     content={lastAnalysisMsg.content}
+                    rawAgents={lastAnalysisMsg.rawAgents}
+                    selectedAgents={lastAnalysisMsg.selectedAgents}
                     url={analysisUrl}
                     analysisId={lastAnalysisMsg.analysisId}
                     onViewOutreach={() => {

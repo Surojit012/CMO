@@ -183,9 +183,14 @@ export class NanopaymentService {
    */
   async settleSessionJob(
     deliverableContent: string,
-    userWalletAddress?: string
+    userWalletAddress?: string,
+    selectedAgents?: string[]
   ): Promise<SessionSettlementResult> {
-    const agentBreakdown = ALL_AGENTS.map((name) => ({
+    const agentsToBill = selectedAgents 
+      ? ALL_AGENTS.filter(a => selectedAgents.includes(a))
+      : ALL_AGENTS;
+      
+    const agentBreakdown = agentsToBill.map((name) => ({
       agentName: name,
       cost: AGENT_PRICES[name] ?? "0.20",
     }));

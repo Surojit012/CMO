@@ -43,7 +43,22 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json()) as Partial<AnalyzeRequest>;
   const rawUrl = body.url?.trim();
-  const selectedAgents = body.selectedAgents;
+  
+  const VALID_AGENTS = ['strategist', 'copywriter', 'seo', 'conversion', 'distribution', 'reddit', 'critic', 'aggregator'];
+  let selectedAgents = body.selectedAgents;
+  
+  if (!Array.isArray(selectedAgents) || selectedAgents.length === 0) {
+    selectedAgents = [...VALID_AGENTS];
+  } else {
+    // Filter out any invalid strings and ensure at least 1 valid agent remains
+    selectedAgents = selectedAgents.filter(a => VALID_AGENTS.includes(a));
+    if (selectedAgents.length === 0) {
+      return NextResponse.json<AnalyzeErrorResponse>(
+        { error: "Invalid agent selection. Please select at least one valid agent." },
+        { status: 400 }
+      );
+    }
+  }
 
   if (!rawUrl) {
     return NextResponse.json<AnalyzeErrorResponse>(
@@ -101,7 +116,8 @@ export async function POST(req: NextRequest) {
       analysis,
       agents,
       extracted,
-      arcReceipt
+      arcReceipt,
+      selectedAgents
     };
 
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {

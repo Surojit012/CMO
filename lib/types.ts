@@ -126,6 +126,7 @@ export type AnalyzeSuccessResponse = {
     visibleText: string;
   };
   arcReceipt?: ArcReceipt;
+  selectedAgents?: string[];
 };
 
 export type AnalyzeErrorResponse = {
@@ -261,6 +262,8 @@ export type Message =
       analysisId: string;
       url?: string;
       content: GrowthResponse;
+      rawAgents?: Record<string, string>;
+      selectedAgents?: string[];
       feedback: FeedbackValue | null;
       feedbackPending?: boolean;
       generatedAssets?: GeneratedAssetMap;

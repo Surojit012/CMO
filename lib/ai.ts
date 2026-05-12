@@ -185,7 +185,9 @@ export async function generateGrowthAnalysis(
 
   // Step 6: Critic Pass
   let criticResult = getDefaultCriticResult();
-  if (!selectedAgents || selectedAgents.includes("critic")) {
+  const baseAgentsRan = !selectedAgents || selectedAgents.some(a => ['strategist', 'copywriter', 'seo', 'conversion', 'distribution', 'reddit'].includes(a));
+  
+  if ((!selectedAgents || selectedAgents.includes("critic")) && baseAgentsRan) {
     onEvent?.({ agent: "critic", status: "thinking", message: "Auditing all outputs for hallucinations and quality…", timestamp: Date.now() });
     criticResult = await runCriticPass(agentOutputs, websiteContent, productName, context.url);
     onEvent?.({
@@ -207,24 +209,37 @@ export async function generateGrowthAnalysis(
   }
 
   // Step 7: Aggregate
-  onEvent?.({ agent: "aggregator", status: "thinking", message: "Synthesizing all specialist reports into a unified growth plan…", timestamp: Date.now() });
-  const outreachForAggregator = outreachCtx ? formatOutreachContext(outreachCtx) : undefined;
-  const auditForAggregator = auditCtx ? formatMarketAuditForAggregator(auditCtx) : undefined;
-  const markdown = await aggregateAgentOutputs(
-    websiteContent,
-    agentOutputs,
-    outreachForAggregator,
-    auditForAggregator,
-    undefined,
-    criticResult,
-    productName
-  );
-  onEvent?.({ agent: "aggregator", status: "done", message: "Growth plan finalized.", timestamp: Date.now() });
+  let markdown = "";
+  if (!selectedAgents || selectedAgents.includes("aggregator")) {
+    onEvent?.({ agent: "aggregator", status: "thinking", message: "Synthesizing all specialist reports into a unified growth plan…", timestamp: Date.now() });
+    const outreachForAggregator = outreachCtx ? formatOutreachContext(outreachCtx) : undefined;
+    const auditForAggregator = auditCtx ? formatMarketAuditForAggregator(auditCtx) : undefined;
+    markdown = await aggregateAgentOutputs(
+      websiteContent,
+      agentOutputs,
+      outreachForAggregator,
+      auditForAggregator,
+      undefined,
+      criticResult,
+      productName
+    );
+    onEvent?.({ agent: "aggregator", status: "done", message: "Growth plan finalized.", timestamp: Date.now() });
+  } else {
+    onEvent?.({ agent: "aggregator", status: "done", message: "Aggregator skipped by user.", timestamp: Date.now() });
+    const parts = [];
+    if (selectedAgents.includes("strategist")) parts.push(`## 🗺️ Strategy\n\n${agentOutputs.strategist}`);
+    if (selectedAgents.includes("copywriter")) parts.push(`## ✍️ Copywriting\n\n${agentOutputs.copywriter}`);
+    if (selectedAgents.includes("seo")) parts.push(`## 🔍 SEO\n\n${agentOutputs.seo}`);
+    if (selectedAgents.includes("conversion")) parts.push(`## ⚡ Conversion\n\n${agentOutputs.conversion}`);
+    if (selectedAgents.includes("distribution")) parts.push(`## 📢 Distribution\n\n${agentOutputs.distribution}`);
+    if (selectedAgents.includes("reddit")) parts.push(`## 🔴 Reddit\n\n${agentOutputs.reddit}`);
+    markdown = parts.length > 0 ? parts.join("\n\n---\n\n") : "No agents were selected to run.";
+  }
 
   // Step 8: Settle consolidated ERC-8183 nanopayment job (AWAITED)
   // One onchain job for the entire session — 7 txs total (~15-20s on Arc Testnet)
   onEvent?.({ agent: "system", status: "thinking", message: "Settling ERC-8183 nanopayment on Arc Testnet…", timestamp: Date.now() });
-  const settlementResult = await nanopaymentService.settleSessionJob(markdown, userWalletAddress);
+  const settlementResult = await nanopaymentService.settleSessionJob(markdown, userWalletAddress, selectedAgents);
   onEvent?.({
     agent: "system",
     status: "done",

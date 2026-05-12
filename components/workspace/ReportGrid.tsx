@@ -44,9 +44,11 @@ type ReportGridProps = {
   onViewOutreach?: () => void;
   generatedAssets?: GeneratedAssetMap;
   actionPendingKeys?: string[];
+  rawAgents?: Record<string, string>;
+  selectedAgents?: string[];
 };
 
-export function ReportGrid({ content, url, analysisId, onViewOutreach }: ReportGridProps) {
+export function ReportGrid({ content, url, analysisId, onViewOutreach, rawAgents, selectedAgents }: ReportGridProps) {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Top bar */}
@@ -59,21 +61,36 @@ export function ReportGrid({ content, url, analysisId, onViewOutreach }: ReportG
         </div>
       )}
 
-      {/* Critical Issues — full width */}
-      <ReportCard label="Critical Issues" items={content.criticalIssues} className="stagger-1 border-red-500/10" />
+      {/* Conditional Rendering Logic */}
+      {(!selectedAgents || selectedAgents.includes("aggregator")) ? (
+        <>
+          {/* Critical Issues — full width */}
+          <ReportCard label="Critical Issues" items={content?.criticalIssues || []} className="stagger-1 border-red-500/10" />
 
-      {/* Two column grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ReportCard label="Growth Strategy" items={content.growthStrategy} className="stagger-2" />
-        <ReportCard label="Viral Hooks" items={content.viralHooks} className="stagger-3" />
-        <ReportCard label="SEO Opportunities" items={content.seoOpportunities} className="stagger-4" />
-        <ReportCard label="Conversion Fixes" items={content.conversionFixes} className="stagger-5" />
-        <ReportCard label="Distribution Plan" items={content.distributionPlan} className="stagger-6" />
-        <ReportCard label="Reddit Opportunities" items={content.redditOpportunities} className="stagger-7" />
-      </div>
+          {/* Two column grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(!selectedAgents || selectedAgents.includes("strategist")) && <ReportCard label="Growth Strategy" items={content?.growthStrategy || []} className="stagger-2" />}
+            {(!selectedAgents || selectedAgents.includes("copywriter")) && <ReportCard label="Viral Hooks" items={content?.viralHooks || []} className="stagger-3" />}
+            {(!selectedAgents || selectedAgents.includes("seo")) && <ReportCard label="SEO Opportunities" items={content?.seoOpportunities || []} className="stagger-4" />}
+            {(!selectedAgents || selectedAgents.includes("conversion")) && <ReportCard label="Conversion Fixes" items={content?.conversionFixes || []} className="stagger-5" />}
+            {(!selectedAgents || selectedAgents.includes("distribution")) && <ReportCard label="Distribution Plan" items={content?.distributionPlan || []} className="stagger-6" />}
+            {(!selectedAgents || selectedAgents.includes("reddit")) && <ReportCard label="Reddit Opportunities" items={content?.redditOpportunities || []} className="stagger-7" />}
+          </div>
 
-      {/* Unfair Advantage — full width */}
-      <ReportCard label="Unfair Advantage" items={content.unfairAdvantage} className="stagger-8" />
+          {/* Unfair Advantage — full width */}
+          <ReportCard label="Unfair Advantage" items={content?.unfairAdvantage || []} className="stagger-8" />
+        </>
+      ) : (
+        /* If Aggregator didn't run, render raw agents directly */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {selectedAgents?.includes("strategist") && rawAgents?.strategist && <ReportCard label="Strategy (Raw)" items={[rawAgents.strategist]} className="stagger-2" />}
+          {selectedAgents?.includes("copywriter") && rawAgents?.copywriter && <ReportCard label="Copywriting (Raw)" items={[rawAgents.copywriter]} className="stagger-3" />}
+          {selectedAgents?.includes("seo") && rawAgents?.seo && <ReportCard label="SEO (Raw)" items={[rawAgents.seo]} className="stagger-4" />}
+          {selectedAgents?.includes("conversion") && rawAgents?.conversion && <ReportCard label="Conversion (Raw)" items={[rawAgents.conversion]} className="stagger-5" />}
+          {selectedAgents?.includes("distribution") && rawAgents?.distribution && <ReportCard label="Distribution (Raw)" items={[rawAgents.distribution]} className="stagger-6" />}
+          {selectedAgents?.includes("reddit") && rawAgents?.reddit && <ReportCard label="Reddit (Raw)" items={[rawAgents.reddit]} className="stagger-7" />}
+        </div>
+      )}
 
       {/* Outreach CTA */}
       {onViewOutreach && (
