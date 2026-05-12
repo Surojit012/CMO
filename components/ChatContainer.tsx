@@ -536,16 +536,6 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       return;
     }
 
-    // PRE-CHECK BALANCE
-    const wallet = wallets?.[0];
-    if (showPaymentUpsell && wallet) {
-      const balance = parseFloat(usdcBalance);
-      if (balance < 5) {
-        await handleFundWalletClick();
-        return;
-      }
-    }
-
     // Start Analysis BEFORE payment
     updateTargetMessages((currentMessages) => [
       ...currentMessages,
@@ -605,43 +595,8 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       requestControllerRef.current = null;
     }
 
-    // War room done — transition to payment phase
+    // War room done — nanopayments settled server-side, no client payment needed
     setIsWarRoomActive(false);
-
-    // GENERATION SUCCESS. NOW CHARGE.
-
-    try {
-      if (wallet) {
-        setCurrentStep(showPaymentUpsell ? ("Report drafted! Processing payment..." as any) : ("Authorizing free usage..." as any));
-        
-        const targetChainId = Number(process.env.NEXT_PUBLIC_ARC_CHAIN_ID || 5042002);
-        if (wallet.chainId !== `eip155:${targetChainId}`) {
-          try {
-            await wallet.switchChain(targetChainId);
-          } catch (e) {
-             console.warn("Could not switch chain, proceeding anyway:", e);
-          }
-        }
-
-        const provider = await wallet.getEthereumProvider();
-        const res = await checkAndPayIfNeeded(provider, wallet.address);
-        
-        if (!res.success) {
-          throw new Error(res.error === "insufficient_balance" ? "Payment failed due to insufficient funds." : `Web3 Payment Failed: ${res.error}`);
-        }
-
-        if (res.success) {
-          if (res.newBalance) setUsdcBalance(res.newBalance);
-          setFreeRemaining(res.remaining);
-        }
-      }
-    } catch (paymentError: any) {
-      setCurrentStep(null);
-      setError(paymentError.message || "Failed to execute Web3 payment transaction. Report not released.");
-      // Remove optimistic user message
-      updateTargetMessages(curr => curr.filter(m => m.role !== "user"));
-      return;
-    }
 
     // ALL SUCCESS -> RENDER RESULT
     setCurrentStep(null);
@@ -786,30 +741,17 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
     }
   }
 
-  const isNeedsPayment = activeTab === "analysis" ? freeRemaining === 0 : true; // Audit always needs payment
-  const showPaymentUpsell = isNeedsPayment;
-  const comparePrice = 10;
-  const singlePrice = activeTab === "analysis" ? 5 : 15;
-  const requiredBalance = compareMode ? comparePrice : singlePrice;
-  const hasSufficientBalance = parseFloat(usdcBalance) >= requiredBalance;
+  // Analysis uses server-side nanopayments — no client wallet payment needed
+  // Audit still uses client-side $15 payment
+  const isAuditTab = activeTab === "audit";
+  const showPaymentUpsell = isAuditTab;
+  const hasSufficientBalance = isAuditTab ? parseFloat(usdcBalance) >= 15 : true;
 
   let buttonLabel = "";
   if (activeTab === "analysis" && compareMode) {
-    if (showPaymentUpsell) {
-      if (isFundingSetup) buttonLabel = "Preparing Wallet...";
-      else if (hasSufficientBalance) buttonLabel = "Pay $10 & Compare";
-      else buttonLabel = "Fund to Compare";
-    } else {
-      buttonLabel = "Compare Both Sites →";
-    }
+    buttonLabel = "Compare Both Sites →";
   } else if (activeTab === "analysis") {
-    if (showPaymentUpsell) {
-      if (isFundingSetup) buttonLabel = "Preparing Wallet...";
-      else if (hasSufficientBalance) buttonLabel = "Pay $5 & Analyze";
-      else buttonLabel = "Fund to Analyze";
-    } else {
-      buttonLabel = "Analyze";
-    }
+    buttonLabel = "Analyze (~1.15 USDC)";
   } else {
     // Audit strictly requires $15
     if (isFundingSetup) buttonLabel = "Preparing Wallet...";
@@ -817,7 +759,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
     else buttonLabel = "Fund to Audit";
   }
 
-  const onButtonClickHandler = showPaymentUpsell && !hasSufficientBalance 
+  const onButtonClickHandler = isAuditTab && !hasSufficientBalance 
     ? () => void handleFundWalletClick() 
     : compareMode 
       ? () => void handleCompareSubmit()
