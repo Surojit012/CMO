@@ -24,16 +24,18 @@ import type {
 import { normalizeUrl } from "@/lib/url";
 import { parseGrowthMarkdown } from "@/lib/parsers";
 
-import { InputBar } from "./InputBar";
-import { LoadingState } from "./LoadingState";
-import { MessageBubble } from "./MessageBubble";
-import { AutonomousMode } from "./AutonomousMode";
-import { OutreachPlanView } from "./OutreachPlanView";
 import { ComparisonReport } from "./ComparisonReport";
 import { HistorySidebar, SavedReport, type HistorySession } from "./HistorySidebar";
-import { OnboardingGuide } from "./OnboardingGuide";
 import { AgentWarRoom } from "./AgentWarRoom";
-import { History, PanelLeft, Swords, ChevronDown, ExternalLink, Zap } from "lucide-react";
+
+import { EmptyState } from "./workspace/EmptyState";
+import { ReportGrid } from "./workspace/ReportGrid";
+import { ExecuteBar } from "./workspace/ExecuteBar";
+import { ArcReceipt as ArcReceiptPanel } from "./workspace/ArcReceipt";
+import { MarketAuditView } from "./workspace/MarketAuditView";
+import { OutreachView } from "./workspace/OutreachView";
+import { ProgressTracker, type AgentRow } from "./workspace/ProgressTracker";
+import { getAllAgentKeys } from "./workspace/AgentSelector";
 
 const loadingSteps = [
   "Strategist defining plan...",
@@ -57,6 +59,10 @@ type ChatContainerProps = {
   userId: string;
   externalReport?: string | null;
   onReportLoaded?: () => void;
+  activeTab: "analysis" | "audit" | "outreach";
+  onTabChange: (tab: "analysis" | "audit" | "outreach") => void;
+  isHistoryOpen: boolean;
+  onHistoryClose: () => void;
 };
 
 async function buildPrivyHeaders(getAccessToken: () => Promise<string | null>, sessionId?: string) {
@@ -73,13 +79,13 @@ async function buildPrivyHeaders(getAccessToken: () => Promise<string | null>, s
   return headers;
 }
 
-export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatContainerProps) {
-  const { user } = usePrivy();
+export function ChatContainer({ userId, externalReport, onReportLoaded, activeTab, onTabChange, isHistoryOpen, onHistoryClose }: ChatContainerProps) {
+  const { user, authenticated } = usePrivy();
   const { getAccessToken } = useToken();
   const { wallets } = useWallets();
   const { createWallet } = useCreateWallet();
   
-  const [activeTab, setActiveTab] = useState<"analysis" | "audit" | "outreach">("analysis");
+  const setActiveTab = onTabChange;
   const [analysisMessages, setAnalysisMessages] = useState<Message[]>([]);
   const [auditMessages, setAuditMessages] = useState<Message[]>([]);
   const messages = activeTab === "analysis" ? analysisMessages : auditMessages;
@@ -94,11 +100,14 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
   const [freeRemaining, setFreeRemaining] = useState<number | null>(null);
   const [usdcBalance, setUsdcBalance] = useState("0.00");
   const [isFundingSetup, setIsFundingSetup] = useState(false);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string>("");
   const [onboardingStep, setOnboardingStep] = useState<"input" | "waiting" | "done" | null>(null);
   const [arcReceipt, setArcReceipt] = useState<ArcReceipt | null>(null);
   const [receiptExpanded, setReceiptExpanded] = useState(false);
+  const [selectedAgents, setSelectedAgents] = useState<string[]>(getAllAgentKeys());
+  const [autonomousEnabled, setAutonomousEnabled] = useState(false);
+  const [autonomousLoading, setAutonomousLoading] = useState(false);
+  const [warRoomElapsed, setWarRoomElapsed] = useState(0);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const loadingIntervalRef = useRef<number | null>(null);
@@ -800,6 +809,45 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
     }
   }
 
+  // War room elapsed timer
+  useEffect(() => {
+    if (!isWarRoomActive) { setWarRoomElapsed(0); return; }
+    setWarRoomElapsed(0);
+    const id = window.setInterval(() => setWarRoomElapsed((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [isWarRoomActive]);
+
+  // Autonomous mode handler
+  async function handleAutonomousToggle() {
+    if (!authenticated || !user?.id) return;
+    const nextEnabled = !autonomousEnabled;
+    setAutonomousLoading(true);
+    try {
+      const token = await getAccessToken();
+      const autoUrl = inputValue || messages.find(m => m.role === 'user')?.url || "";
+      await fetch("/api/autonomous", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ websiteUrl: autoUrl, enabled: nextEnabled }),
+      });
+      setAutonomousEnabled(nextEnabled);
+    } catch { /* silent */ }
+    finally { setAutonomousLoading(false); }
+  }
+
+  // Check autonomous status on mount
+  useEffect(() => {
+    if (!authenticated || !user?.id) return;
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        const res = await fetch("/api/autonomous", { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+        const data = await res.json();
+        if (typeof data.enabled === "boolean") setAutonomousEnabled(data.enabled);
+      } catch { /* silent */ }
+    })();
+  }, [authenticated, user?.id]);
+
   const isNeedsPayment = activeTab === "analysis" ? freeRemaining === 0 : true;
   const showPaymentUpsell = isNeedsPayment;
   const comparePrice = 2.70;
@@ -837,310 +885,187 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       ? () => void handleCompareSubmit()
       : undefined;
 
+  // Build strategy context string for execute bar
+  const lastAnalysisMsg = [...messages].reverse().find(
+    (m): m is Extract<Message, { role: "assistant" }> => m.role === "assistant" && "content" in m && !!m.content
+  );
+  const strategyContext = lastAnalysisMsg
+    ? [
+        "Growth Strategy", ...(lastAnalysisMsg.content.growthStrategy || []).map((i: string) => `- ${i}`), "",
+        "Viral Hooks", ...(lastAnalysisMsg.content.viralHooks || []).map((i: string) => `- ${i}`), "",
+        "SEO", ...(lastAnalysisMsg.content.seoOpportunities || []).map((i: string) => `- ${i}`), "",
+        "Conversion", ...(lastAnalysisMsg.content.conversionFixes || []).map((i: string) => `- ${i}`), "",
+        "Distribution", ...(lastAnalysisMsg.content.distributionPlan || []).map((i: string) => `- ${i}`),
+      ].join("\n")
+    : "";
+
   const hasMessages = messages.length > 0 || Boolean(currentStep) || isWarRoomActive;
 
+  // Build ProgressTracker agent rows from war room
+  const progressAgents: AgentRow[] = isWarRoomActive
+    ? [
+        { name: "Strategist", status: warRoomElapsed > 9 ? "complete" : warRoomElapsed > 4 ? "running" : "pending", cost: "0.20" },
+        { name: "Copywriter", status: warRoomElapsed > 16 ? "complete" : warRoomElapsed > 9 ? "running" : "pending", cost: "0.20" },
+        { name: "SEO Agent", status: warRoomElapsed > 17 ? "complete" : warRoomElapsed > 10 ? "running" : "pending", cost: "0.20" },
+        { name: "Conversion", status: warRoomElapsed > 18 ? "complete" : warRoomElapsed > 10 ? "running" : "pending", cost: "0.20" },
+        { name: "Distribution", status: warRoomElapsed > 19 ? "complete" : warRoomElapsed > 11 ? "running" : "pending", cost: "0.20" },
+        { name: "Reddit Intel", status: warRoomElapsed > 20 ? "complete" : warRoomElapsed > 11 ? "running" : "pending", cost: "0.15" },
+        { name: "Critic", status: warRoomElapsed > 26 ? "complete" : warRoomElapsed > 21 ? "running" : "pending", cost: "0.10" },
+        { name: "Aggregator", status: warRoomElapsed > 35 ? "complete" : warRoomElapsed > 27 ? "running" : "pending", cost: "0.10" },
+      ]
+    : [];
+
+  const analysisUrl = messages.find(m => m.role === "user")?.url || inputValue || "";
+  const hasAnalysisResult = lastAnalysisMsg !== undefined;
+
   return (
-    <div className="flex w-full relative min-h-[calc(100vh-65px)]">
-      {onboardingStep && <OnboardingGuide step={onboardingStep} />}
-      <HistorySidebar 
-        isOpen={isHistoryOpen} 
-        onClose={() => setIsHistoryOpen(false)} 
-        onSessionSelect={handleSessionSelect}
-        activeSessionId={sessionId}
-      />
-      
-      <div className="flex-1 flex flex-col relative w-full h-full">
-        {/* Toggle Button (Visible only when sidebar is closed) */}
-        {user?.id && (
-          <div className={`absolute top-2 left-2 sm:top-5 sm:left-4 z-40 transition-all duration-300 ${isHistoryOpen ? 'opacity-0 pointer-events-none translate-x-[-20px]' : 'opacity-100 pointer-events-auto translate-x-0'}`}>
-            <button 
-              onClick={() => setIsHistoryOpen(true)} 
-              className="p-2 rounded-lg bg-zinc-50 border border-zinc-200/80 text-zinc-500 hover:bg-white hover:text-zinc-900 transition shadow-sm flex items-center justify-center opacity-80 hover:opacity-100"
-              title="Open history sidebar"
-            >
-              <PanelLeft className="w-4 h-4" />
-            </button>
-          </div>
-        )}
+    <div className="flex w-full min-h-[calc(100vh-52px)]">
+      {/* Workspace content */}
+      <div className="flex-1 overflow-y-auto scroll-smooth" ref={viewportRef}>
+        <div className="mx-auto max-w-[820px] px-4 py-8 sm:px-6 sm:py-12 space-y-6">
 
-        <section className="mx-auto flex w-full max-w-[700px] flex-1 flex-col px-3 pb-44 pt-6 sm:px-5 sm:pb-40 sm:pt-10 md:px-6 md:pb-44 md:pt-14 relative">
-          <header className="mb-6 space-y-1.5 text-center sm:mb-10 sm:space-y-2 md:mb-14">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-950">CMO</p>
-            <p className="text-sm text-zinc-500">Your AI Growth Team</p>
-          </header>
-
-          {/* Tab Switcher */}
-          <div className="flex justify-center mb-4 sm:mb-6">
-
-        <div className="flex items-center rounded-full bg-zinc-100/80 p-1 ring-1 ring-black/5">
-          <button
-            onClick={() => { setActiveTab('analysis'); setCompareMode(false); setComparisonResult(null); }}
-            className={`rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 ${
-              activeTab === 'analysis' 
-                ? 'bg-zinc-950 text-white shadow-md' 
-                : 'text-zinc-500 hover:text-zinc-800'
-            }`}
-          >
-            Growth Analysis
-          </button>
-          <button
-            onClick={() => { setActiveTab('audit'); setCompareMode(false); setComparisonResult(null); }}
-            className={`rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 ${
-              activeTab === 'audit' 
-                ? 'bg-zinc-950 text-white shadow-md' 
-                : 'text-zinc-500 hover:text-zinc-800'
-            }`}
-          >
-            Market Audit
-          </button>
-          <button
-            onClick={() => { setActiveTab('outreach'); setCompareMode(false); setComparisonResult(null); }}
-            className={`rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all duration-200 ${
-              activeTab === 'outreach' 
-                ? 'bg-zinc-950 text-white shadow-md' 
-                : 'text-zinc-500 hover:text-zinc-800'
-            }`}
-          >
-            Outreach Engine
-          </button>
-        </div>
-      </div>
-
-      {/* Compare Mode Toggle — only visible on analysis tab */}
-      {activeTab === "analysis" && (
-        <div className="flex justify-center mb-6 sm:mb-10">
-          <div className="flex items-center rounded-full bg-zinc-50 p-0.5 ring-1 ring-zinc-200/80">
-            <button
-              onClick={() => { setCompareMode(false); setComparisonResult(null); }}
-              className={`rounded-full px-4 py-1.5 text-[11px] sm:text-xs font-semibold transition-all duration-200 ${
-                !compareMode
-                  ? 'bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200/60'
-                  : 'text-zinc-400 hover:text-zinc-600'
-              }`}
-            >
-              Single Analysis
-            </button>
-            <button
-              onClick={() => { setCompareMode(true); setComparisonResult(null); }}
-              className={`rounded-full px-4 py-1.5 text-[11px] sm:text-xs font-semibold transition-all duration-200 flex items-center gap-1.5 ${
-                compareMode
-                  ? 'bg-white text-zinc-900 shadow-sm ring-1 ring-zinc-200/60'
-                  : 'text-zinc-400 hover:text-zinc-600'
-              }`}
-            >
-              <Swords className="h-3 w-3" /> Compare Mode
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div
-        ref={viewportRef}
-        className="min-h-0 flex-1 space-y-5 overflow-y-auto scroll-smooth"
-      >
-        {/* Comparison result */}
-        {comparisonResult && activeTab === "analysis" && (
-          <ComparisonReport data={comparisonResult} />
-        )}
-
-        {activeTab !== "outreach" && !hasMessages && !comparisonResult ? (
-          <section className="flex min-h-[30vh] flex-col items-center justify-center text-center sm:min-h-[45vh] md:min-h-[52vh]">
-            <div className="space-y-3 sm:space-y-4">
-              <h1 className="text-2xl font-semibold tracking-[-0.04em] text-zinc-950 sm:text-3xl md:text-4xl">
-                {compareMode ? "Compare two sites head-to-head." : "Drop in a URL. Get a growth strategy back."}
-              </h1>
-              <p className="mx-auto max-w-xl text-[13px] leading-6 text-zinc-500 sm:text-sm sm:leading-7 md:text-base">
-                {activeTab === "audit" 
-                  ? "Deep competitive intelligence · $15 USDC per report"
-                  : compareMode
-                    ? "Enter your site and a competitor's URL. Get a battle card showing who wins and why."
-                    : "A minimal AI interface that audits your website like a sharp growth team, then returns structured strategy, hooks, SEO plays, conversion fixes, and distribution ideas."}
-              </p>
+          {/* Error display */}
+          {error && (
+            <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400 animate-fade-in">
+              {error}
             </div>
-          </section>
-        ) : null}
+          )}
 
-        {activeTab !== "outreach" && messages.map((message) => (
-          <MessageBubble
-            key={message.id}
-            message={message}
-            onFeedback={handleFeedback}
-            onAction={handleAction}
-            onViewOutreach={handleViewOutreach}
-            userId={userId}
-          />
-        ))}
-
-        {activeTab === "outreach" && (
-          outreachContext ? (
-            <OutreachPlanView 
-              analysisData={outreachContext} 
-              sessionId={sessionId}
-            />
-          ) : (
-            <section className="flex flex-col items-center justify-center text-center py-20 px-4">
-              <div className="bg-zinc-100 p-4 rounded-full mb-4">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-zinc-500"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-              </div>
-              <h2 className="text-xl font-bold text-zinc-900 mb-2">No active context found.</h2>
-              <p className="text-sm text-zinc-500 max-w-sm mb-6">
-                You need to run a Growth Analysis first to generate a customized community outreach plan.
-              </p>
-              <button 
-                onClick={() => setActiveTab('analysis')}
-                className="rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
-              >
-                Go to Growth Analysis
-              </button>
-            </section>
-          )
-        )}
-
-        {isWarRoomActive && activeTab === "analysis" ? <AgentWarRoom active={isWarRoomActive} /> : null}
-        {currentStep && !isWarRoomActive ? <LoadingState currentStep={currentStep} steps={[...loadingSteps]} /> : null}
-
-        {/* ⚡ Arc Nanopayment Receipt */}
-        {arcReceipt && activeTab === "analysis" && messages.length > 0 && !currentStep && !isWarRoomActive && (
-          <div className="mt-4 mb-6 rounded-xl border border-white/10 bg-zinc-900 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-500 relative z-50">
-            <button
-              onClick={() => setReceiptExpanded(!receiptExpanded)}
-              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800/50 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Zap className="w-3.5 h-3.5 text-yellow-400" />
-                <span className="text-xs font-semibold text-zinc-300">
-                  Settled {arcReceipt.totalCost} across {arcReceipt.jobs.length} agents on Arc Testnet
-                </span>
-              </div>
-              <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-200 ${receiptExpanded ? 'rotate-180' : ''}`} />
-            </button>
-
-            {receiptExpanded && (
-              <div className="px-4 pb-4 border-t border-white/5">
-                <div className="mt-3 space-y-1.5">
-                  {arcReceipt.jobs.map((job, i) => (
-                    <div key={i} className="flex items-center justify-between text-[11px] font-mono">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full ${job.status === 'settled' ? 'bg-emerald-400' : job.status === 'failed' ? 'bg-red-400' : 'bg-zinc-600'}`} />
-                        <span className="text-zinc-400">{job.agentName}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-zinc-500">{job.cost} USDC</span>
-                        {job.txHash && (
-                          <a
-                            href={`https://testnet.arcscan.app/tx/${job.txHash}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-zinc-600 hover:text-zinc-300 transition-colors"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
-                  <span className="text-zinc-500 font-medium">
-                    {arcReceipt.settledCount}/{arcReceipt.jobCount} jobs settled
-                  </span>
-                  <span className="text-zinc-300 font-bold">
-                    Total: {arcReceipt.totalCost}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 flex justify-center px-2 pb-3 sm:px-4 sm:pb-5 md:pb-7">
-        <div className="pointer-events-auto w-full max-w-[740px]">
-          <div className="rounded-[24px] bg-gradient-to-t from-[#f3f2ef] via-[#f3f2ef]/95 to-transparent px-1 pt-6 sm:rounded-[32px] sm:pt-10">
-            
-            {/* INLINE WEB3 PAYMENT UPSELL BANNER */}
-            {activeTab !== "outreach" && showPaymentUpsell && !hasSufficientBalance && (
-              <div className="mb-3 mx-2 rounded-2xl bg-orange-50/80 p-3 border border-orange-200/60 shadow-sm flex flex-col items-center text-center animate-in slide-in-from-bottom-2 fade-in backdrop-blur-sm sm:mb-4 sm:mx-3 sm:p-5">
-                <h3 className="text-sm font-bold text-orange-900 mb-1 flex items-center gap-1.5">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                  {activeTab === "audit" ? "Market Audits require $15 USDC" : "You've used your 3 free analyses"}
-                </h3>
-                <p className="text-xs text-orange-700/90 mb-4 font-medium">
-                  {activeTab === "audit" 
-                    ? "Fund your wallet to continue — $15 per audit." 
-                    : "Fund your wallet to continue — $5 per analysis."}
-                </p>
-                <p className="text-[11px] text-orange-700/80 mb-4 font-medium">
-                  {activeTab === "audit" ? "Deep competitive intelligence" : "3 free analyses · one time"}
-                </p>
-                
-                <div className="flex flex-wrap items-center justify-center gap-2 bg-white/90 px-3 py-2 rounded-xl shadow-sm border border-orange-100/80 w-fit sm:gap-3 sm:px-4 sm:py-2.5">
-                   <span className="font-mono text-xs text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md">
-                     {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "No wallet yet"}
-                   </span>
-                   <span className="font-bold text-sm text-zinc-900 flex items-center gap-1.5">
-                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-500"><circle cx="12" cy="12" r="10"></circle><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 18V6"></path></svg>
-                     {usdcBalance}
-                   </span>
-                   <button
-                     onClick={handleFundWalletClick}
-                     disabled={isFundingSetup}
-                     className="text-[11px] bg-orange-100 hover:bg-orange-200 text-orange-700 px-3 py-1.5 ml-1 rounded-md font-bold transition-colors uppercase tracking-wide disabled:cursor-not-allowed disabled:opacity-60"
-                   >
-                      {isFundingSetup ? "Preparing..." : "Fund Wallet"}
-                   </button>
-                </div>
-              </div>
-            )}
-
-            {error ? <p className="mb-3 px-3 text-sm font-medium text-red-600 animate-in fade-in">{error}</p> : null}
-            
-            {activeTab !== "outreach" && (
-              <div className="space-y-2">
-                <InputBar
-                  disabled={loadingIntervalRef.current !== null || isFundingSetup || isWarRoomActive}
-                  value={inputValue}
-                  onChange={setInputValue}
-                  onSubmit={compareMode ? () => void handleCompareSubmit() : handleSubmit}
+          {/* === ANALYSIS TAB === */}
+          {activeTab === "analysis" && (
+            <>
+              {/* Empty state: no messages, not loading */}
+              {!hasMessages && !comparisonResult && (
+                <EmptyState
+                  activeTab="analysis"
+                  compareMode={compareMode}
+                  onCompareModeChange={(mode) => { setCompareMode(mode); setComparisonResult(null); }}
+                  inputValue={inputValue}
+                  onInputChange={setInputValue}
+                  compareUrl={compareUrl}
+                  onCompareUrlChange={setCompareUrl}
+                  onSubmit={handleSubmit}
+                  onCompareSubmit={() => void handleCompareSubmit()}
                   onButtonClick={onButtonClickHandler}
                   buttonLabel={buttonLabel}
+                  disabled={loadingIntervalRef.current !== null || isFundingSetup || isWarRoomActive}
                   buttonLoading={isFundingSetup}
-                  placeholder={activeTab === "audit" ? "Enter any website URL to audit..." : compareMode ? "Your site — e.g., https://trycmo.com" : "E.g., https://trycmo.com"}
+                  showPaymentUpsell={showPaymentUpsell}
+                  hasSufficientBalance={hasSufficientBalance}
+                  usdcBalance={usdcBalance}
+                  walletAddress={walletAddress}
+                  onFundWallet={() => void handleFundWalletClick()}
+                  isFundingSetup={isFundingSetup}
+                  freeRemaining={freeRemaining}
+                  selectedAgents={selectedAgents}
+                  onAgentSelectionChange={setSelectedAgents}
                 />
+              )}
 
-                {/* Compare mode: second URL input */}
-                {compareMode && activeTab === "analysis" && (
-                  <div className="animate-in slide-in-from-top-2 fade-in duration-300 space-y-2">
-                    <div className="flex items-center justify-center gap-2 py-1">
-                      <div className="h-px flex-1 bg-zinc-200" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">VS</span>
-                      <div className="h-px flex-1 bg-zinc-200" />
-                    </div>
-                    <div className="flex flex-col gap-2 rounded-[20px] bg-white/92 p-2 shadow-[0_12px_50px_rgba(0,0,0,0.08)] ring-1 ring-black/5 backdrop-blur-md sm:rounded-[28px]">
-                      <input
-                        type="text"
-                        inputMode="url"
-                        placeholder="Competitor site — e.g., https://okara.ai"
-                        aria-label="Competitor URL"
-                        value={compareUrl}
-                        onChange={(e) => setCompareUrl(e.target.value)}
-                        disabled={loadingIntervalRef.current !== null || isFundingSetup}
-                        className="h-11 flex-1 rounded-[16px] bg-transparent px-3 text-sm text-zinc-950 outline-none placeholder:text-zinc-400 disabled:cursor-not-allowed sm:h-12 sm:rounded-[22px] sm:px-4"
-                      />
-                    </div>
-                    <p className="text-center text-[10px] font-medium text-zinc-400">
-                      Comparison uses 2 analyses ({showPaymentUpsell ? "$10 USDC" : "2 free credits"})
-                    </p>
+              {/* Comparison result */}
+              {comparisonResult && <div className="dark-override"><ComparisonReport data={comparisonResult} /></div>}
+
+              {/* Progress tracker during war room */}
+              {isWarRoomActive && (
+                <ProgressTracker url={analysisUrl} agents={progressAgents} elapsedSeconds={warRoomElapsed} />
+              )}
+
+              {/* Loading state (non-war-room, e.g. payment processing) */}
+              {currentStep && !isWarRoomActive && (
+                <div className="flex justify-center animate-fade-in">
+                  <div className="w-full max-w-[480px] rounded-2xl border border-white/[0.06] bg-zinc-900/60 p-6 text-center">
+                    <span className="relative flex h-2 w-2 mx-auto mb-4">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                    </span>
+                    <p className="text-sm text-zinc-300">{currentStep}</p>
                   </div>
-                )}
-              </div>
-            )}
-              {user?.id && activeTab === 'analysis' && !compareMode && <AutonomousMode initialUrl={inputValue || messages.find(m => m.role === 'user')?.url || ""} />}
-            </div>
-          </div>
+                </div>
+              )}
+
+              {/* Report grid when analysis is done */}
+              {hasAnalysisResult && !isWarRoomActive && !currentStep && lastAnalysisMsg?.content && (
+                <>
+                  <ReportGrid
+                    content={lastAnalysisMsg.content}
+                    url={analysisUrl}
+                    analysisId={lastAnalysisMsg.analysisId}
+                    onViewOutreach={() => {
+                      handleViewOutreach(lastAnalysisMsg);
+                    }}
+                  />
+
+                  {/* Execute bar */}
+                  <ExecuteBar strategyContext={strategyContext} />
+
+                  {/* Arc Receipt */}
+                  {arcReceipt && <ArcReceiptPanel receipt={arcReceipt} />}
+                </>
+              )}
+            </>
+          )}
+
+          {/* === AUDIT TAB === */}
+          {activeTab === "audit" && (
+            <>
+              {/* Empty state for audit */}
+              {!hasMessages && !currentStep && (
+                <EmptyState
+                  activeTab="audit"
+                  compareMode={false}
+                  onCompareModeChange={() => {}}
+                  inputValue={inputValue}
+                  onInputChange={setInputValue}
+                  compareUrl=""
+                  onCompareUrlChange={() => {}}
+                  onSubmit={handleSubmit}
+                  onCompareSubmit={() => {}}
+                  onButtonClick={onButtonClickHandler}
+                  buttonLabel={buttonLabel}
+                  disabled={loadingIntervalRef.current !== null || isFundingSetup}
+                  buttonLoading={isFundingSetup}
+                  showPaymentUpsell={showPaymentUpsell}
+                  hasSufficientBalance={hasSufficientBalance}
+                  usdcBalance={usdcBalance}
+                  walletAddress={walletAddress}
+                  onFundWallet={() => void handleFundWalletClick()}
+                  isFundingSetup={isFundingSetup}
+                  freeRemaining={freeRemaining}
+                  selectedAgents={selectedAgents}
+                  onAgentSelectionChange={setSelectedAgents}
+                />
+              )}
+
+              {/* Loading state for audit */}
+              {currentStep && (
+                <div className="flex justify-center animate-fade-in">
+                  <div className="w-full max-w-[480px] rounded-2xl border border-white/[0.06] bg-zinc-900/60 p-6 text-center">
+                    <span className="relative flex h-2 w-2 mx-auto mb-4">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                    </span>
+                    <p className="text-sm text-zinc-300">{currentStep}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Audit result */}
+              <MarketAuditView messages={messages} currentStep={currentStep} />
+            </>
+          )}
+
+          {/* === OUTREACH TAB === */}
+          {activeTab === "outreach" && (
+            <OutreachView
+              context={outreachContext}
+              sessionId={sessionId}
+              onSwitchToAnalysis={() => setActiveTab("analysis")}
+            />
+          )}
+
         </div>
-        </section>
       </div>
     </div>
   );
 }
+

@@ -2,26 +2,17 @@
 
 import { usePrivy, useToken } from "@privy-io/react-auth";
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { ChatContainer } from "@/components/ChatContainer";
 import { NewReportBanner } from "@/components/NewReportBanner";
 import { DailyReportModal } from "@/components/DailyReportModal";
-
+import { Navbar } from "@/components/layout/Navbar";
+import { Sidebar } from "@/components/layout/Sidebar";
 import { WalletPanel } from "@/components/WalletPanel";
 
 function getUserLabel(user: ReturnType<typeof usePrivy>["user"]) {
-  if (!user) {
-    return "Unknown user";
-  }
-
-  if (user.email?.address) {
-    return user.email.address;
-  }
-
-  if (user.wallet?.address) {
-    return user.wallet.address;
-  }
-
+  if (!user) return "Unknown user";
+  if (user.email?.address) return user.email.address;
+  if (user.wallet?.address) return user.wallet.address;
   return user.id;
 }
 
@@ -31,44 +22,32 @@ export default function Home() {
   const { getAccessToken } = useToken();
   const [hasNewReportBadge, setHasNewReportBadge] = useState(false);
   const [externalReport, setExternalReport] = useState<string | null>(null);
-  const [dailyReportModal, setDailyReportModal] = useState<{ markdown: string, timestamp: string } | null>(null);
+  const [dailyReportModal, setDailyReportModal] = useState<{ markdown: string; timestamp: string } | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"analysis" | "audit" | "outreach">("analysis");
 
   useEffect(() => {
     if (!authenticated || !user?.id) return;
-
-    async function checkReport() {
-      if (!user?.id) return;
+    (async () => {
       try {
         const token = await getAccessToken();
-        const res = await fetch(`/api/autonomous`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined
+        const res = await fetch("/api/autonomous", {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         const data = await res.json();
-        // Just used for the little pinging red dot on the profile icon
         setHasNewReportBadge(data.hasNewReport);
-      } catch (err) {
-        console.error("Failed to check report status:", err);
-      }
-    }
-
-    checkReport();
+      } catch {}
+    })();
   }, [authenticated, user?.id]);
 
   if (!appId || appId === "your_privy_app_id") {
     return (
-      <main className="flex min-h-screen items-center justify-center px-6">
-        <div className="w-full max-w-md rounded-3xl bg-white/90 p-8 text-center shadow-[0_24px_70px_rgba(0,0,0,0.10)] ring-1 ring-black/5">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-950 leading-none">CMO</p>
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 ring-1 ring-zinc-200">
-              Beta
-            </span>
-          </div>
-          <h1 className="mt-4 text-2xl font-semibold tracking-[-0.03em] text-zinc-950">
-            Privy app ID required
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-500">
-            Set <code>NEXT_PUBLIC_PRIVY_APP_ID</code> in <code>.env.local</code> to enable login.
+      <main className="flex min-h-screen items-center justify-center px-6 bg-[#09090b]">
+        <div className="w-full max-w-md rounded-2xl bg-zinc-900/60 border border-white/[0.06] p-8 text-center">
+          <p className="text-sm font-bold tracking-[0.2em] text-white mb-4">CMO</p>
+          <h1 className="text-2xl font-semibold text-white">Privy app ID required</h1>
+          <p className="mt-3 text-sm text-zinc-500">
+            Set <code className="text-zinc-400">NEXT_PUBLIC_PRIVY_APP_ID</code> in <code className="text-zinc-400">.env.local</code>
           </p>
         </div>
       </main>
@@ -77,31 +56,24 @@ export default function Home() {
 
   if (!ready) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-6">
-        <p className="text-sm text-zinc-500">Loading authentication...</p>
+      <main className="flex min-h-screen items-center justify-center bg-[#09090b]">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+        </span>
       </main>
     );
   }
 
   if (!authenticated) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-6">
-        <div className="w-full max-w-md rounded-3xl bg-white/90 p-8 text-center shadow-[0_24px_70px_rgba(0,0,0,0.10)] ring-1 ring-black/5">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-950 leading-none">CMO</p>
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500 ring-1 ring-zinc-200">
-              Beta
-            </span>
-          </div>
-          <h1 className="mt-4 text-3xl font-semibold tracking-[-0.03em] text-zinc-950">Login to CMO</h1>
-          <p className="mt-3 text-sm leading-6 text-zinc-500">
-            Sign in to run AI growth analysis, execute assets, and track your usage history.
-          </p>
-          <button
-            type="button"
-            onClick={login}
-            className="mt-7 inline-flex items-center justify-center rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-800"
-          >
+      <main className="flex min-h-screen items-center justify-center px-6 bg-[#09090b]">
+        <div className="w-full max-w-md rounded-2xl bg-zinc-900/60 border border-white/[0.06] p-8 text-center">
+          <p className="text-sm font-bold tracking-[0.2em] text-white mb-2">CMO</p>
+          <span className="rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500">Beta</span>
+          <h1 className="mt-6 text-3xl font-semibold text-white">Login to CMO</h1>
+          <p className="mt-3 text-sm text-zinc-500">Sign in to run AI growth analysis.</p>
+          <button onClick={login} className="mt-7 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-zinc-200 transition">
             Login to CMO
           </button>
         </div>
@@ -110,60 +82,57 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen relative">
-      <nav className="sticky top-0 z-50 flex items-center justify-between gap-2 border-b border-zinc-200/60 bg-white/80 px-3 py-2 shadow-sm backdrop-blur-md sm:gap-3 sm:px-6 sm:py-3">
-        <div className="flex items-center gap-2">
-          <Link 
-            href="/" 
-            className="ml-1 text-[13px] font-bold uppercase tracking-[0.2em] text-zinc-950 transition hover:opacity-80 sm:ml-2 sm:text-[14px]"
-          >
-            C M O
-          </Link>
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-zinc-500 ring-1 ring-zinc-200">
-            Beta
-          </span>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3">
-          <WalletPanel />
-          <div className="relative flex h-fit items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs text-zinc-700 shadow-sm ring-1 ring-zinc-200/80 backdrop-blur sm:gap-3 sm:px-4 sm:py-2 sm:text-sm">
-            {hasNewReportBadge && (
-              <span className="absolute -right-1 -top-1 flex h-3 w-3">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-zinc-400 opacity-75"></span>
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-zinc-950"></span>
-              </span>
-            )}
-            <span className="max-w-[100px] truncate sm:max-w-[220px]">{getUserLabel(user)}</span>
-            <button
-              type="button"
-              onClick={logout}
-              className="rounded-full bg-zinc-900 px-2.5 py-1 text-[11px] font-semibold text-white transition hover:bg-zinc-800 sm:px-3 sm:text-xs"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </nav>
-      
-      <div className="mx-auto w-full max-w-[700px] px-3 mt-3 sm:px-5 sm:mt-4">
-        <NewReportBanner 
-          onViewReport={(markdown, timestamp) => {
-            setDailyReportModal({ markdown, timestamp });
-            setHasNewReportBadge(false);
-          }} 
+    <main className="min-h-screen bg-[#09090b] relative">
+      <Navbar
+        userLabel={getUserLabel(user)}
+        balance="0.00"
+        balanceSymbol="USDC"
+        onLogout={logout}
+        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+        showMenuButton={true}
+      />
+      <div className="hidden"><WalletPanel /></div>
+
+      <div className="flex pt-[52px]">
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onSessionSelect={() => {}}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          autonomousEnabled={false}
+          autonomousLoading={false}
+          onAutonomousToggle={() => {}}
+          autonomousUrl=""
         />
+
+        <div className="flex-1 min-w-0">
+          <div className="mx-auto w-full max-w-[820px] px-4 pt-4 sm:px-6">
+            <NewReportBanner
+              onViewReport={(markdown, timestamp) => {
+                setDailyReportModal({ markdown, timestamp });
+                setHasNewReportBadge(false);
+              }}
+            />
+          </div>
+
+          <ChatContainer
+            userId={user?.id || ""}
+            externalReport={externalReport}
+            onReportLoaded={() => setExternalReport(null)}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            isHistoryOpen={sidebarOpen}
+            onHistoryClose={() => setSidebarOpen(false)}
+          />
+        </div>
       </div>
 
-      <ChatContainer 
-        userId={user?.id || ""} 
-        externalReport={externalReport}
-        onReportLoaded={() => setExternalReport(null)}
-      />
-
       {dailyReportModal && (
-        <DailyReportModal 
-          markdown={dailyReportModal.markdown} 
+        <DailyReportModal
+          markdown={dailyReportModal.markdown}
           timestamp={dailyReportModal.timestamp}
-          onClose={() => setDailyReportModal(null)} 
+          onClose={() => setDailyReportModal(null)}
         />
       )}
     </main>

@@ -1,19 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #f5f5f3;
-  --color-panel: rgba(255, 255, 255, 0.9);
-  --color-panel-strong: #ffffff;
-  --color-fg: #111111;
-  --color-muted: #6b6b6b;
-  --color-soft: #e7e5e4;
-  --color-soft-strong: #d6d3d1;
-  --color-accent: #171717;
+  --color-bg: #09090b;
+  --color-surface: rgba(24, 24, 27, 0.6);
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-fg: #f4f4f5;
+  --color-secondary: #a1a1aa;
+  --color-muted: #71717a;
+  --color-accent: #ffffff;
+  --font-sans: "Avenir Next", "Helvetica Neue", "Segoe UI", sans-serif;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Legacy compat – some sub-components still reference these */
+  --color-panel: rgba(24, 24, 27, 0.6);
+  --color-panel-strong: #18181b;
+  --color-soft: rgba(255, 255, 255, 0.06);
+  --color-soft-strong: rgba(255, 255, 255, 0.12);
   --color-fit-green: #22c55e;
   --color-fit-amber: #f59e0b;
   --color-fit-red: #ef4444;
-  --font-sans: "Avenir Next", "Helvetica Neue", "Segoe UI", sans-serif;
-  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
@@ -33,17 +39,20 @@ body {
   font-family: var(--font-sans);
   overflow-x: hidden;
   touch-action: manipulation;
+  background-color: var(--color-bg);
+  color: var(--color-fg);
 }
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
 ::selection {
-  background: #111111;
-  color: #ffffff;
+  background: #ffffff;
+  color: #09090b;
 }
 
 /* Safe area inset padding for bottom-fixed elements on notched devices */
@@ -53,15 +62,44 @@ textarea {
   }
 }
 
+/* ── Animations ─────────────────────────────────────────── */
 @keyframes fitBarFill {
-  from {
-    width: 0%;
-  }
+  from { width: 0%; }
 }
 
 @keyframes skeletonPulse {
-  50% {
-    opacity: .5;
+  50% { opacity: 0.5; }
+}
+
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -71,4 +109,187 @@ textarea {
 
 .animate-skeleton-pulse {
   animation: skeletonPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-card-entrance {
+  animation: cardEntrance 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 200ms ease-out both;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slideUp 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Stagger delay utilities */
+.stagger-1 { animation-delay: 80ms; }
+.stagger-2 { animation-delay: 160ms; }
+.stagger-3 { animation-delay: 240ms; }
+.stagger-4 { animation-delay: 320ms; }
+.stagger-5 { animation-delay: 400ms; }
+.stagger-6 { animation-delay: 480ms; }
+.stagger-7 { animation-delay: 560ms; }
+.stagger-8 { animation-delay: 640ms; }
+
+/* ── Scrollbar (dark) ───────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── Dark overrides for legacy light-theme sub-components ── */
+/* MarketAuditReport, OutreachPlanView, ComparisonReport     */
+.dark-override,
+.dark-override * {
+  /* Reset borders */
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.dark-override {
+  /* Background resets */
+  --tw-bg-opacity: 1;
+}
+
+.dark-override section,
+.dark-override .rounded-3xl,
+.dark-override .rounded-2xl,
+.dark-override .rounded-xl {
+  background-color: rgba(24, 24, 27, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.dark-override h1,
+.dark-override h2,
+.dark-override h3,
+.dark-override h4,
+.dark-override .text-zinc-950,
+.dark-override .text-zinc-900,
+.dark-override .text-zinc-800 {
+  color: #f4f4f5 !important;
+}
+
+.dark-override p,
+.dark-override span,
+.dark-override td,
+.dark-override li,
+.dark-override .text-zinc-700,
+.dark-override .text-zinc-600,
+.dark-override .text-zinc-500 {
+  color: #a1a1aa !important;
+}
+
+.dark-override .text-zinc-400 {
+  color: #71717a !important;
+}
+
+.dark-override .bg-white,
+.dark-override .bg-zinc-50,
+.dark-override .bg-zinc-100 {
+  background-color: rgba(24, 24, 27, 0.4) !important;
+}
+
+.dark-override table thead,
+.dark-override .bg-zinc-50 {
+  background-color: rgba(24, 24, 27, 0.6) !important;
+}
+
+.dark-override input,
+.dark-override textarea,
+.dark-override select {
+  background-color: rgba(24, 24, 27, 0.8) !important;
+  color: #f4f4f5 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Keep colored badges readable */
+.dark-override .bg-blue-50,
+.dark-override .bg-green-50,
+.dark-override .bg-red-50,
+.dark-override .bg-orange-50,
+.dark-override .bg-emerald-50,
+.dark-override .bg-amber-50,
+.dark-override .bg-indigo-50,
+.dark-override .bg-purple-50 {
+  background-color: rgba(24, 24, 27, 0.6) !important;
+}
+
+/* Score ring colors stay as-is — they're good */
+.dark-override .border-green-500 { border-color: #22c55e !important; }
+.dark-override .border-orange-500 { border-color: #f59e0b !important; }
+.dark-override .border-red-500 { border-color: #ef4444 !important; }
+.dark-override .border-blue-500 { border-color: #3b82f6 !important; }
+
+/* Progress bars keep color */
+.dark-override .bg-green-500 { background-color: #22c55e !important; }
+.dark-override .bg-orange-500 { background-color: #f59e0b !important; }
+.dark-override .bg-red-500 { background-color: #ef4444 !important; }
+.dark-override .bg-blue-500 { background-color: #3b82f6 !important; }
+.dark-override .bg-emerald-500 { background-color: #10b981 !important; }
+
+/* Emerald footer row */
+.dark-override .bg-emerald-50,
+.dark-override tfoot {
+  background-color: rgba(16, 185, 129, 0.1) !important;
+}
+.dark-override .text-emerald-900,
+.dark-override .text-emerald-800 {
+  color: #6ee7b7 !important;
+}
+
+/* Copy buttons */
+.dark-override button {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #d4d4d8 !important;
+}
+.dark-override button:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Export/CTA buttons that should stay solid */
+.dark-override .bg-zinc-950 {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+}
+
+/* Outreach view overrides */
+.dark-override .shadow-sm {
+  box-shadow: none !important;
+}
+
+/* ── Mobile responsiveness ──────────────────────────────── */
+@media (max-width: 1023px) {
+  /* Sidebar already handles its own responsive via transforms */
+  /* Ensure workspace content fills width */
+  .min-h-\[calc\(100vh-52px\)\] {
+    min-height: calc(100vh - 52px);
+    min-height: calc(100dvh - 52px);
+  }
+}
+
+@media (max-width: 640px) {
+  /* Tighten hero text on small screens */
+  .text-5xl {
+    font-size: 2rem !important;
+    line-height: 1.1 !important;
+  }
+  .text-4xl {
+    font-size: 1.75rem !important;
+    line-height: 1.15 !important;
+  }
 }
