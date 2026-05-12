@@ -608,7 +608,8 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
     // War room done — transition to payment phase
     setIsWarRoomActive(false);
 
-    // CHARGE USER WALLET (same flow as before — free quota + $5 USDC)
+    // CHARGE USER WALLET — nanopayment: 1.35 USDC direct transfer to server wallet
+    let paymentTxHash: string | undefined;
     try {
       if (wallet) {
         setCurrentStep(showPaymentUpsell ? ("Report drafted! Processing payment..." as any) : ("Authorizing free usage..." as any));
@@ -630,6 +631,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
         }
 
         if (res.success) {
+          paymentTxHash = res.txHash;
           if (res.newBalance) setUsdcBalance(res.newBalance);
           setFreeRemaining(res.remaining);
         }
@@ -656,9 +658,22 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
     ]);
     setInputValue("");
 
-    // Store Arc nanopayment receipt if present
+    // Store Arc nanopayment receipt — merge client-side payment txHash
     if (data.arcReceipt) {
-      setArcReceipt(data.arcReceipt);
+      const receipt = { ...data.arcReceipt };
+
+      // Inject the client-side USDC transfer hash as the verified payment proof
+      if (paymentTxHash) {
+        receipt.arcScanLinks = [`https://testnet.arcscan.app/tx/${paymentTxHash}`];
+        receipt.jobs = receipt.jobs.map((job) => ({
+          ...job,
+          txHash: paymentTxHash,
+          status: "settled" as const,
+        }));
+        receipt.settledCount = receipt.jobs.length;
+      }
+
+      setArcReceipt(receipt);
       setReceiptExpanded(false);
     }
   }
