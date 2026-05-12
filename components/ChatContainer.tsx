@@ -540,7 +540,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
     const wallet = wallets?.[0];
     if (showPaymentUpsell && wallet) {
       const balance = parseFloat(usdcBalance);
-      if (balance < 5) {
+      if (balance < 1.35) {
         await handleFundWalletClick();
         return;
       }
@@ -787,8 +787,8 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
 
   const isNeedsPayment = activeTab === "analysis" ? freeRemaining === 0 : true;
   const showPaymentUpsell = isNeedsPayment;
-  const comparePrice = 10;
-  const singlePrice = activeTab === "analysis" ? 5 : 15;
+  const comparePrice = 2.70;
+  const singlePrice = activeTab === "analysis" ? 1.35 : 15;
   const requiredBalance = compareMode ? comparePrice : singlePrice;
   const hasSufficientBalance = parseFloat(usdcBalance) >= requiredBalance;
 
@@ -796,7 +796,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
   if (activeTab === "analysis" && compareMode) {
     if (showPaymentUpsell) {
       if (isFundingSetup) buttonLabel = "Preparing Wallet...";
-      else if (hasSufficientBalance) buttonLabel = "Pay $10 & Compare";
+      else if (hasSufficientBalance) buttonLabel = "Pay $2.70 & Compare";
       else buttonLabel = "Fund to Compare";
     } else {
       buttonLabel = "Compare Both Sites →";
@@ -804,7 +804,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
   } else if (activeTab === "analysis") {
     if (showPaymentUpsell) {
       if (isFundingSetup) buttonLabel = "Preparing Wallet...";
-      else if (hasSufficientBalance) buttonLabel = "Pay $5 & Analyze";
+      else if (hasSufficientBalance) buttonLabel = "Pay $1.35 & Analyze";
       else buttonLabel = "Fund to Analyze";
     } else {
       buttonLabel = "Analyze";
@@ -994,7 +994,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
               <div className="flex items-center gap-2">
                 <Zap className="w-3.5 h-3.5 text-yellow-400" />
                 <span className="text-xs font-semibold text-zinc-300">
-                  Settled {arcReceipt.totalCost} across {arcReceipt.settledCount} agent jobs on Arc Testnet
+                  Settled {arcReceipt.totalCost} across {arcReceipt.jobs.length} agents on Arc Testnet
                 </span>
               </div>
               <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-200 ${receiptExpanded ? 'rotate-180' : ''}`} />

@@ -325,7 +325,7 @@ export function WalletPanel() {
           >
             <span className={`h-2.5 w-2.5 rounded-full ${statusDotClass}`} />
             <span className="font-semibold text-zinc-900 hidden md:inline">
-              {freeAnalyses > 0 ? `${freeAnalyses} free analyses left` : "$5 Analysis · $15 Audit"}
+              {freeAnalyses > 0 ? `${freeAnalyses} free analyses left` : "$1.35 Analysis · $15 Audit"}
             </span>
             <span className="font-semibold text-zinc-900 md:hidden">
               {freeAnalyses > 0 ? `${freeAnalyses} free` : "Wallet"}

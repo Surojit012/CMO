@@ -36,7 +36,8 @@ const USDC_ABI = [
   "function balanceOf(address) view returns (uint256)",
   "function decimals() view returns (uint8)",
   "function approve(address spender, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)"
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function transfer(address to, uint256 amount) returns (bool)"
 ];
 
 export const arcProvider = new ethers.JsonRpcProvider(ARC_RPC_URL);
@@ -216,6 +217,15 @@ export async function getPricePerAnalysisFormattedFixed2(): Promise<string> {
   return "$5.00";
 }
 
+/** Nanopayment price: sum of all 8 agent costs */
+const NANOPAYMENT_PRICE_USDC = "1.35";
+
+/** Server wallet that receives nanopayment transfers */
+const SERVER_WALLET_ADDRESS =
+  process.env.NEXT_PUBLIC_CMO_SERVER_WALLET
+  || process.env.NEXT_PUBLIC_DEPLOYER_ADDRESS
+  || "0x34e20D873994ddE2e918b2ddCF88815Fae46FF93"; // CMO deployer wallet
+
 export async function checkAndPayIfNeeded(
   walletClient: any,
   address: string
@@ -259,64 +269,46 @@ export async function checkAndPayIfNeeded(
       }
     }
 
-    // 2. Free limit hit — read price from contract
+    // 2. Nanopayment pricing — direct USDC transfer to server wallet
     const decimals: number = Number(await usdcContract.decimals());
-    console.log("USDC decimals:", decimals);
-
-    const pricePerAnalysis: bigint = await cmoContract.pricePerAnalysis();
-    console.log("Contract price raw:", pricePerAnalysis.toString());
-    console.log("Contract price formatted:", ethers.formatUnits(pricePerAnalysis, decimals));
+    const nanopaymentAmount = ethers.parseUnits(NANOPAYMENT_PRICE_USDC, decimals);
+    console.log("Nanopayment price:", NANOPAYMENT_PRICE_USDC, "USDC (", nanopaymentAmount.toString(), "raw)");
 
     // 3. Check balance
     const balanceBefore: bigint = await usdcContract.balanceOf(address);
-    console.log("Balance before raw:", balanceBefore.toString());
-    console.log("Balance before formatted:", ethers.formatUnits(balanceBefore, decimals));
+    console.log("Balance before:", ethers.formatUnits(balanceBefore, decimals));
 
-    if (balanceBefore < pricePerAnalysis) {
+    if (balanceBefore < nanopaymentAmount) {
       return { success: false, paid: false, remaining: 0, error: "insufficient_balance" };
     }
 
-    // 4. Check and set allowance
-    const allowance: bigint = await usdcContract.allowance(address, CMO_CONTRACT_ADDRESS!);
-    console.log("Current allowance raw:", allowance.toString());
-
-    if (allowance < pricePerAnalysis) {
-      console.log("Approving max allowance for smoother repeat payments");
-      const { tx: approveTx } = await sendTransactionWithRetry(
-        () => usdcContract.approve(CMO_CONTRACT_ADDRESS!, ethers.MaxUint256),
-        "approve"
-      );
-      console.log("Approve tx hash:", approveTx.hash);
-    } else {
-      console.log("Allowance sufficient — skipping approve");
+    // 4. Transfer USDC directly to server wallet
+    if (!SERVER_WALLET_ADDRESS) {
+      throw new Error("Server wallet address not configured");
     }
 
-    // 5. Execute payment
-    console.log("Executing payForAnalysis...");
+    console.log("Transferring", NANOPAYMENT_PRICE_USDC, "USDC to", SERVER_WALLET_ADDRESS);
     const { tx: paymentTx, receipt } = await sendTransactionWithRetry(
-      () => cmoContract.payForAnalysis(address),
-      "payForAnalysis"
+      () => usdcContract.transfer(SERVER_WALLET_ADDRESS, nanopaymentAmount),
+      "nanopayment-transfer"
     );
     const txHash = receipt?.hash || paymentTx.hash;
-    console.log("Payment tx hash:", txHash);
+    console.log("Nanopayment tx hash:", txHash);
 
-    // 6. Verify actual deduction using contract price directly
+    // 5. Verify deduction
     const balanceAfter: bigint = await usdcContract.balanceOf(address);
     const charged = balanceBefore - balanceAfter;
-    console.log("Charged raw:", charged.toString());
-    console.log("Expected raw:", pricePerAnalysis.toString());
-    console.log("Actually charged formatted:", ethers.formatUnits(charged, decimals));
+    console.log("Charged:", ethers.formatUnits(charged, decimals), "USDC");
 
-    // FIX: compare against pricePerAnalysis directly — not against hardcoded 1 USDC
-    if (charged < pricePerAnalysis) {
+    if (charged < nanopaymentAmount) {
       console.error("Payment verification failed:", {
         charged: charged.toString(),
-        expected: pricePerAnalysis.toString()
+        expected: nanopaymentAmount.toString()
       });
       throw new Error("Payment verification failed — please try again");
     }
 
-    // 7. Refresh balance
+    // 6. Refresh balance
     const newBalance = await getWalletBalance(address);
     console.log("New balance after payment:", newBalance);
 
