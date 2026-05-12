@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json()) as Partial<AnalyzeRequest>;
   const rawUrl = body.url?.trim();
+  const selectedAgents = body.selectedAgents;
 
   if (!rawUrl) {
     return NextResponse.json<AnalyzeErrorResponse>(
@@ -74,7 +75,8 @@ export async function POST(req: NextRequest) {
       { url: url.toString(), ...extracted },
       memory,
       undefined,       // onEvent — not used in API route (no SSE)
-      userWalletAddress
+      userWalletAddress,
+      selectedAgents
     );
 
     await storeAnalysis({

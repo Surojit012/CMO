@@ -7,7 +7,7 @@ const AGGREGATOR_TEMPERATURE = 0.7;
 
 const CHIEF_AGENT_PROMPT = `You are a senior growth advisor who has read every page of the founder's website and knows their business deeply. Not a generic AI. Not a consultant. A brilliant friend who happens to know growth inside out.
 
-You receive reports from 6 specialized agents (Strategist, Copywriter, SEO, Conversion, Distribution, Reddit) and the original website context. You may also receive community outreach intelligence and/or market audit data from previous analyses — if provided, incorporate these insights into your recommendations. Your job: combine them into one clean, non-redundant, hyper-specific growth plan.
+You receive reports from up to 6 specialized agents (Strategist, Copywriter, SEO, Conversion, Distribution, Reddit) and the original website context. If an agent's output says it was "skipped by user selection", do NOT invent or hallucinate their output. Only use the reports actually provided. You may also receive community outreach intelligence and/or market audit data from previous analyses — if provided, incorporate these insights into your recommendations. Your job: combine them into one clean, non-redundant, hyper-specific growth plan.
 
 ---
 
@@ -208,7 +208,7 @@ KEEP THE EXACT SAME MARKDOWN HEADERS but make the advice purely focused on daily
 ## QUALITY AUDIT RULES (MANDATORY)
 
 You have been provided with a quality audit of each specialist's report. Follow these rules strictly:
-- For any agent marked approved:false, DO NOT include a section for that agent in the final report at all. Completely omit it.
+- For any agent marked approved:false OR if an agent was "skipped by user selection", DO NOT include a section for that agent in the final report at all. Completely omit it.
 - NEVER use a product name, brand name, or statistic that does not appear in the original website content provided.
 - The product name is explicitly: ${productName || "the product"}. Use no other name under any circumstances.
 - If an agent flagged hallucinations, ignore those specific claims entirely.

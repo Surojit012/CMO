@@ -1,7 +1,7 @@
 import type { GrowthResponse, MemoryContext, CriticResult, ArcReceipt } from "./types";
 import { aggregateAgentOutputs } from "./aggregator";
 import { runAllAgents } from "./agents";
-import { runCriticPass } from "./critic";
+import { runCriticPass, getDefaultCriticResult } from "./critic";
 import { getOutreachContext, formatOutreachContext } from "./outreach-bridge";
 import {
   getMarketAuditContext,
@@ -153,7 +153,8 @@ export async function generateGrowthAnalysis(
   context: WebsiteContext,
   memory: MemoryContext,
   onEvent?: AgentEventCallback,
-  userWalletAddress?: string
+  userWalletAddress?: string,
+  selectedAgents?: string[]
 ): Promise<MultiAgentAnalysis> {
   // Step 1: Fetch both data bridges from Redis in parallel (non-blocking)
   onEvent?.({ agent: "system", status: "thinking", message: "Fetching outreach & market data…", timestamp: Date.now() });
@@ -180,24 +181,29 @@ export async function generateGrowthAnalysis(
 
   // Step 5: Run all agents (unchanged — no blocking on payments)
   const marketAuditForSeo = auditCtx ? formatMarketAuditForAgents(auditCtx) : undefined;
-  const agentOutputs = await runAllAgents(websiteContent, marketAuditForSeo, onEvent);
+  const agentOutputs = await runAllAgents(websiteContent, marketAuditForSeo, onEvent, selectedAgents);
 
   // Step 6: Critic Pass
-  onEvent?.({ agent: "critic", status: "thinking", message: "Auditing all outputs for hallucinations and quality…", timestamp: Date.now() });
-  const criticResult = await runCriticPass(agentOutputs, websiteContent, productName, context.url);
-  onEvent?.({
-    agent: "critic",
-    status: "done",
-    message: `Quality score: ${criticResult.overall_quality_score}/10. ${criticResult.summary}`,
-    timestamp: Date.now()
-  });
-  console.log(`[Critic] Quality Score: ${criticResult.overall_quality_score}/10 | Product: ${productName}`);
-  console.log(`[Critic] Summary: ${criticResult.summary}`);
-  for (const agent of ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit"] as const) {
-    const v = criticResult[agent];
-    if (!v.approved) {
-      console.warn(`[Critic] ⚠️ ${agent} NOT approved (confidence: ${v.confidence}) — flags: ${v.flags.join(", ")} | hallucinations: ${v.hallucinations.join(", ")}`);
+  let criticResult = getDefaultCriticResult();
+  if (!selectedAgents || selectedAgents.includes("critic")) {
+    onEvent?.({ agent: "critic", status: "thinking", message: "Auditing all outputs for hallucinations and quality…", timestamp: Date.now() });
+    criticResult = await runCriticPass(agentOutputs, websiteContent, productName, context.url);
+    onEvent?.({
+      agent: "critic",
+      status: "done",
+      message: `Quality score: ${criticResult.overall_quality_score}/10. ${criticResult.summary}`,
+      timestamp: Date.now()
+    });
+    console.log(`[Critic] Quality Score: ${criticResult.overall_quality_score}/10 | Product: ${productName}`);
+    console.log(`[Critic] Summary: ${criticResult.summary}`);
+    for (const agent of ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit"] as const) {
+      const v = criticResult[agent];
+      if (!v.approved) {
+        console.warn(`[Critic] ⚠️ ${agent} NOT approved (confidence: ${v.confidence}) — flags: ${v.flags.join(", ")} | hallucinations: ${v.hallucinations.join(", ")}`);
+      }
     }
+  } else {
+    onEvent?.({ agent: "critic", status: "done", message: "Critic Agent skipped by user.", timestamp: Date.now() });
   }
 
   // Step 7: Aggregate

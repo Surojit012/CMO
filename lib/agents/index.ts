@@ -287,17 +287,23 @@ export function runDistributionAgent(websiteContent: string, strategistBrief?: s
 export async function runAllAgents(
   websiteContent: string,
   marketAuditSummary?: string,
-  onEvent?: AgentEventCallback
+  onEvent?: AgentEventCallback,
+  selectedAgents?: string[]
 ): Promise<SpecializedAgentOutputs> {
+  const isSelected = (agent: SpecializedAgentName) => 
+    !selectedAgents || selectedAgents.includes(agent);
+
   // Step 1: Run Strategist + product info extraction in parallel.
   const [strategist, productInfo] = await Promise.all([
-    withAgentEvent(
-      "strategist",
-      "Analyzing positioning, ICP, and GTM strategy…",
-      "Brief ready — broadcasting to the team.",
-      () => runStrategistAgent(websiteContent),
-      onEvent
-    ),
+    isSelected("strategist")
+      ? withAgentEvent(
+          "strategist",
+          "Analyzing positioning, ICP, and GTM strategy…",
+          "Brief ready — broadcasting to the team.",
+          () => runStrategistAgent(websiteContent),
+          onEvent
+        )
+      : Promise.resolve("Strategist Agent was skipped by user selection."),
     withAgentEvent(
       "system",
       "Extracting product identity…",
@@ -313,41 +319,51 @@ export async function runAllAgents(
     : strategist;
 
   const [copywriter, seo, conversion, distribution, reddit] = await Promise.all([
-    withAgentEvent(
-      "copywriter",
-      "@Strategist — got the brief. Crafting hooks with PAS framework…",
-      "Copy analysis complete.",
-      () => runCopywriterAgent(websiteContent, strategist),
-      onEvent
-    ),
-    withAgentEvent(
-      "seo",
-      "@Strategist — received. Running keyword analysis + GEO audit…",
-      "SEO opportunities identified.",
-      () => runSeoAgent(websiteContent, seoContext),
-      onEvent
-    ),
-    withAgentEvent(
-      "conversion",
-      "@Strategist — locked in. Auditing landing page with LIFT model…",
-      "Conversion audit complete.",
-      () => runConversionAgent(websiteContent, strategist),
-      onEvent
-    ),
-    withAgentEvent(
-      "distribution",
-      "@Strategist — ICP noted. Mapping growth channels…",
-      "Distribution plan mapped.",
-      () => runDistributionAgent(websiteContent, strategist),
-      onEvent
-    ),
-    withAgentEvent(
-      "reddit",
-      "Searching Reddit for live discussions about this product…",
-      "Reddit scan complete.",
-      () => redditAgent(productInfo.name || "this product", productInfo.description || "an AI solution"),
-      onEvent
-    )
+    isSelected("copywriter")
+      ? withAgentEvent(
+          "copywriter",
+          "@Strategist — got the brief. Crafting hooks with PAS framework…",
+          "Copy analysis complete.",
+          () => runCopywriterAgent(websiteContent, strategist),
+          onEvent
+        )
+      : Promise.resolve("Copywriter Agent was skipped by user selection."),
+    isSelected("seo")
+      ? withAgentEvent(
+          "seo",
+          "@Strategist — received. Running keyword analysis + GEO audit…",
+          "SEO opportunities identified.",
+          () => runSeoAgent(websiteContent, seoContext),
+          onEvent
+        )
+      : Promise.resolve("SEO Agent was skipped by user selection."),
+    isSelected("conversion")
+      ? withAgentEvent(
+          "conversion",
+          "@Strategist — locked in. Auditing landing page with LIFT model…",
+          "Conversion audit complete.",
+          () => runConversionAgent(websiteContent, strategist),
+          onEvent
+        )
+      : Promise.resolve("Conversion Agent was skipped by user selection."),
+    isSelected("distribution")
+      ? withAgentEvent(
+          "distribution",
+          "@Strategist — ICP noted. Mapping growth channels…",
+          "Distribution plan mapped.",
+          () => runDistributionAgent(websiteContent, strategist),
+          onEvent
+        )
+      : Promise.resolve("Distribution Agent was skipped by user selection."),
+    isSelected("reddit")
+      ? withAgentEvent(
+          "reddit",
+          "Searching Reddit for live discussions about this product…",
+          "Reddit scan complete.",
+          () => redditAgent(productInfo.name || "this product", productInfo.description || "an AI solution"),
+          onEvent
+        )
+      : Promise.resolve("Reddit Agent was skipped by user selection.")
   ]);
 
   return {

@@ -41,7 +41,7 @@ const DEFAULT_VERDICT: CriticAgentVerdict = {
   approved: true,
 };
 
-function getDefaultCriticResult(): CriticResult {
+export function getDefaultCriticResult(): CriticResult {
   return {
     strategist: { ...DEFAULT_VERDICT },
     copywriter: { ...DEFAULT_VERDICT },

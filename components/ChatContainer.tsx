@@ -583,7 +583,8 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
         headers: analyzeHeaders,
         signal: requestControllerRef.current.signal,
         body: JSON.stringify({
-          url: normalizedUrl
+          url: normalizedUrl,
+          selectedAgents
         })
       });
 

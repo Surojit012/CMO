@@ -104,6 +104,7 @@ export type ExecuteAction =
 export type AnalyzeRequest = {
   url: string;
   userId?: string | null;
+  selectedAgents?: string[];
 };
 
 export type AnalyzeSuccessResponse = {
