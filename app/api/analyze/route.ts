@@ -65,9 +65,16 @@ export async function POST(req: NextRequest) {
     const memory = await getMemoryContext(url.toString(), url.hostname);
     const analysisId = crypto.randomUUID();
 
-    const { markdown, analysis, agents } = await generateGrowthAnalysis(
+    // Extract user wallet address for Arc nanopayment job descriptions
+    // Privy user IDs follow the format "did:privy:<id>" — the actual wallet
+    // address comes from the request body or header if available
+    const userWalletAddress = req.headers.get("x-user-wallet-address") || undefined;
+
+    const { markdown, analysis, agents, arcReceipt } = await generateGrowthAnalysis(
       { url: url.toString(), ...extracted },
-      memory
+      memory,
+      undefined,       // onEvent — not used in API route (no SSE)
+      userWalletAddress
     );
 
     await storeAnalysis({
@@ -91,7 +98,8 @@ export async function POST(req: NextRequest) {
       markdown,
       analysis,
       agents,
-      extracted
+      extracted,
+      arcReceipt
     };
 
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -118,3 +126,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

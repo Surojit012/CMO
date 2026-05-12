@@ -36,6 +36,23 @@ export type PaymentRecord = {
   analysisUrl: string;
 };
 
+export type ArcJobRecord = {
+  agentName: string;
+  jobId: string | null;
+  cost: string;
+  txHash: string | null;
+  status: "settled" | "failed" | "skipped";
+  timestamp: number;
+};
+
+export type ArcReceipt = {
+  totalCost: string;
+  jobCount: number;
+  settledCount: number;
+  jobs: ArcJobRecord[];
+  arcScanLinks: string[];
+};
+
 export type CompareScores = {
   messagingClarity: { site1: number; site2: number };
   seoStrength: { site1: number; site2: number };
@@ -107,6 +124,7 @@ export type AnalyzeSuccessResponse = {
     metaDescription: string;
     visibleText: string;
   };
+  arcReceipt?: ArcReceipt;
 };
 
 export type AnalyzeErrorResponse = {

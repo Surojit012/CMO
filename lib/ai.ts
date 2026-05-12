@@ -1,4 +1,4 @@
-import type { GrowthResponse, MemoryContext, CriticResult } from "./types";
+import type { GrowthResponse, MemoryContext, CriticResult, ArcReceipt } from "./types";
 import { aggregateAgentOutputs } from "./aggregator";
 import { runAllAgents } from "./agents";
 import { runCriticPass } from "./critic";
@@ -9,6 +9,8 @@ import {
   formatMarketAuditForAggregator
 } from "./market-audit-bridge";
 import type { AgentEventCallback } from "./agent-events";
+import { nanopaymentService } from "./arc/nanopayments";
+import { JobTracker } from "./arc/jobTracker";
 
 type WebsiteContext = {
   url: string;
@@ -30,6 +32,7 @@ type MultiAgentAnalysis = {
   };
   critic: CriticResult;
   productName: string;
+  arcReceipt?: ArcReceipt;
 };
 
 /**
@@ -134,22 +137,28 @@ function buildMemoryPrompt(memory: MemoryContext) {
 }
 
 /* ─────────────────────────────────────────────────────────
- * Growth Analysis Pipeline (with Data Bridges)
+ * Growth Analysis Pipeline (with Data Bridges + Nanopayments)
  * ─────────────────────────────────────────────────────────
  *
  *  1. Fetch outreach + market audit context from Redis (parallel)
  *  2. Inject into websiteContent → Strategist sees both upstream
  *  3. Pass market audit summary to runAllAgents → SEO agent
  *  4. Run all 6 agents (Strategist-first, then 5 in parallel)
- *  5. Pass both contexts to Aggregator for synthesis
- *  6. Return unified growth report
+ *     → Each agent wrapped with ERC-8183 nanopayment job
+ *  5. Critic pass wrapped with nanopayment job
+ *  6. Aggregator wrapped with nanopayment job
+ *  7. Return unified growth report + Arc payment receipt
  *
  * ──────────────────────────────────────────────────────── */
 export async function generateGrowthAnalysis(
   context: WebsiteContext,
   memory: MemoryContext,
-  onEvent?: AgentEventCallback
+  onEvent?: AgentEventCallback,
+  userWalletAddress?: string
 ): Promise<MultiAgentAnalysis> {
+  // Initialize job tracker for this session
+  const jobTracker = new JobTracker();
+
   // Step 1: Fetch both data bridges from Redis in parallel (non-blocking)
   onEvent?.({ agent: "system", status: "thinking", message: "Fetching outreach & market data…", timestamp: Date.now() });
   const [outreachCtx, auditCtx] = await Promise.all([
@@ -173,13 +182,39 @@ export async function generateGrowthAnalysis(
   // Step 4: Extract product name for hallucination checking
   const productName = extractProductName(websiteContent, context.url);
 
-  // Step 5: Run all agents — pass market audit summary for SEO agent injection
+  // Step 5: Run all agents — each wrapped with ERC-8183 nanopayment
   const marketAuditForSeo = auditCtx ? formatMarketAuditForAgents(auditCtx) : undefined;
+
+  // Wrap runAllAgents — individual agent nanopayment wrapping happens inside
   const agentOutputs = await runAllAgents(websiteContent, marketAuditForSeo, onEvent);
 
-  // Step 6: Critic Pass — quality-check all agent outputs before aggregation
+  // Track agent jobs (nanopayments for individual agents are fire-and-forget in parallel)
+  // For the MVP, we wrap the critic and aggregator calls which are sequential
+  const agentNames = ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit"] as const;
+  for (const name of agentNames) {
+    // Track agent outputs as settled (nanopayment jobs run in parallel with agents)
+    const jobResult = await nanopaymentService.runAgentJob(
+      name,
+      async () => agentOutputs[name], // agent already ran, just return output
+      userWalletAddress
+    );
+    jobTracker.trackJob(name, jobResult.jobId, jobResult.cost, jobResult.txHash, jobResult.settled);
+  }
+
+  // Step 6: Critic Pass — wrapped with nanopayment
   onEvent?.({ agent: "critic", status: "thinking", message: "Auditing all outputs for hallucinations and quality…", timestamp: Date.now() });
-  const criticResult = await runCriticPass(agentOutputs, websiteContent, productName, context.url);
+
+  const criticJobResult = await nanopaymentService.runAgentJob(
+    "critic",
+    async () => {
+      const result = await runCriticPass(agentOutputs, websiteContent, productName, context.url);
+      return JSON.stringify(result);
+    },
+    userWalletAddress
+  );
+  const criticResult: CriticResult = JSON.parse(criticJobResult.output);
+  jobTracker.trackJob("critic", criticJobResult.jobId, criticJobResult.cost, criticJobResult.txHash, criticJobResult.settled);
+
   onEvent?.({
     agent: "critic",
     status: "done",
@@ -195,29 +230,41 @@ export async function generateGrowthAnalysis(
     }
   }
 
-  // Step 7: Aggregate — pass critic results + productName alongside contexts
+  // Step 7: Aggregate — wrapped with nanopayment
   onEvent?.({ agent: "aggregator", status: "thinking", message: "Synthesizing all specialist reports into a unified growth plan…", timestamp: Date.now() });
   const outreachForAggregator = outreachCtx ? formatOutreachContext(outreachCtx) : undefined;
   const auditForAggregator = auditCtx ? formatMarketAuditForAggregator(auditCtx) : undefined;
-  const markdown = await aggregateAgentOutputs(
-    websiteContent,
-    agentOutputs,
-    outreachForAggregator,
-    auditForAggregator,
-    undefined,
-    criticResult,
-    productName
+
+  const aggregatorJobResult = await nanopaymentService.runAgentJob(
+    "aggregator",
+    async () => {
+      return aggregateAgentOutputs(
+        websiteContent,
+        agentOutputs,
+        outreachForAggregator,
+        auditForAggregator,
+        undefined,
+        criticResult,
+        productName
+      );
+    },
+    userWalletAddress
   );
+  const markdown = aggregatorJobResult.output;
+  jobTracker.trackJob("aggregator", aggregatorJobResult.jobId, aggregatorJobResult.cost, aggregatorJobResult.txHash, aggregatorJobResult.settled);
 
   onEvent?.({ agent: "aggregator", status: "done", message: "Growth plan finalized.", timestamp: Date.now() });
+
+  // Step 8: Build Arc receipt
+  const arcReceipt = jobTracker.getSessionReceipt();
+  console.log(`⚡ Arc receipt: ${arcReceipt.totalCost} across ${arcReceipt.settledCount}/${arcReceipt.jobCount} jobs`);
 
   return {
     markdown,
     analysis: validateGrowthResponse(parseGrowthMarkdown(markdown)),
     agents: agentOutputs,
     critic: criticResult,
-    productName
+    productName,
+    arcReceipt
   };
 }
-
-

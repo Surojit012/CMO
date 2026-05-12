@@ -8,6 +8,7 @@ import {
   checkAndPayForAudit,
   getWalletBalanceWithMeta
 } from "@/lib/arc-payment";
+import type { ArcReceipt } from "@/lib/types";
 
 import type {
   ActionResponse,
@@ -32,7 +33,7 @@ import { ComparisonReport } from "./ComparisonReport";
 import { HistorySidebar, SavedReport, type HistorySession } from "./HistorySidebar";
 import { OnboardingGuide } from "./OnboardingGuide";
 import { AgentWarRoom } from "./AgentWarRoom";
-import { History, PanelLeft, Swords } from "lucide-react";
+import { History, PanelLeft, Swords, ChevronDown, ExternalLink, Zap } from "lucide-react";
 
 const loadingSteps = [
   "Strategist defining plan...",
@@ -96,6 +97,8 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [sessionId, setSessionId] = useState<string>("");
   const [onboardingStep, setOnboardingStep] = useState<"input" | "waiting" | "done" | null>(null);
+  const [arcReceipt, setArcReceipt] = useState<ArcReceipt | null>(null);
+  const [receiptExpanded, setReceiptExpanded] = useState(false);
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const loadingIntervalRef = useRef<number | null>(null);
@@ -562,9 +565,13 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       pingActivity();
       requestControllerRef.current = new AbortController();
 
+      const analyzeHeaders = await buildPrivyHeaders(getAccessToken, sessionId);
+      if (walletAddress) {
+        analyzeHeaders["x-user-wallet-address"] = walletAddress;
+      }
       const response = await fetch("/api/analyze", {
         method: "POST",
-        headers: await buildPrivyHeaders(getAccessToken, sessionId),
+        headers: analyzeHeaders,
         signal: requestControllerRef.current.signal,
         body: JSON.stringify({
           url: normalizedUrl
@@ -649,6 +656,12 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
       }
     ]);
     setInputValue("");
+
+    // Store Arc nanopayment receipt if present
+    if (data.arcReceipt) {
+      setArcReceipt(data.arcReceipt);
+      setReceiptExpanded(false);
+    }
   }
 
   async function handleFeedback(analysisId: string, feedback: FeedbackValue) {
@@ -971,6 +984,60 @@ export function ChatContainer({ userId, externalReport, onReportLoaded }: ChatCo
 
         {isWarRoomActive && activeTab === "analysis" ? <AgentWarRoom active={isWarRoomActive} /> : null}
         {currentStep && !isWarRoomActive ? <LoadingState currentStep={currentStep} steps={[...loadingSteps]} /> : null}
+
+        {/* ⚡ Arc Nanopayment Receipt */}
+        {arcReceipt && activeTab === "analysis" && messages.length > 0 && !currentStep && !isWarRoomActive && (
+          <div className="mt-4 rounded-xl border border-white/10 bg-zinc-900 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <button
+              onClick={() => setReceiptExpanded(!receiptExpanded)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-zinc-800/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                <span className="text-xs font-semibold text-zinc-300">
+                  Settled {arcReceipt.totalCost} across {arcReceipt.settledCount} agent jobs on Arc Testnet
+                </span>
+              </div>
+              <ChevronDown className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-200 ${receiptExpanded ? 'rotate-180' : ''}`} />
+            </button>
+
+            {receiptExpanded && (
+              <div className="px-4 pb-4 border-t border-white/5">
+                <div className="mt-3 space-y-1.5">
+                  {arcReceipt.jobs.map((job, i) => (
+                    <div key={i} className="flex items-center justify-between text-[11px] font-mono">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${job.status === 'settled' ? 'bg-emerald-400' : job.status === 'failed' ? 'bg-red-400' : 'bg-zinc-600'}`} />
+                        <span className="text-zinc-400">{job.agentName}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-zinc-500">{job.cost} USDC</span>
+                        {job.txHash && (
+                          <a
+                            href={`https://testnet.arcscan.app/tx/${job.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-zinc-600 hover:text-zinc-300 transition-colors"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px]">
+                  <span className="text-zinc-500 font-medium">
+                    {arcReceipt.settledCount}/{arcReceipt.jobCount} jobs settled
+                  </span>
+                  <span className="text-zinc-300 font-bold">
+                    Total: {arcReceipt.totalCost}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="pointer-events-none fixed inset-x-0 bottom-0 flex justify-center px-2 pb-3 sm:px-4 sm:pb-5 md:pb-7">
