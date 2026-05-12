@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePrivy, useToken } from "@privy-io/react-auth";
-import { X, Loader2, Settings } from "lucide-react";
+import { X, Loader2, Settings, ChevronUp, Bell, Download, Key, HelpCircle } from "lucide-react";
 import type { HistorySession, SavedReport } from "@/components/HistorySidebar";
 
 function relativeTime(dateStr: string): string {
@@ -71,6 +71,7 @@ export function Sidebar({
   const { getAccessToken } = useToken();
   const [sessions, setSessions] = useState<HistorySession[]>([]);
   const [loading, setLoading] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -130,7 +131,7 @@ export function Sidebar({
           w-[280px] flex flex-col overflow-hidden
           bg-[#09090b] border-r border-white/5
           transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
-          lg:translate-x-0 lg:relative lg:top-0 lg:z-auto
+          lg:sticky lg:top-[52px] lg:z-auto lg:h-[calc(100vh-52px)] lg:translate-x-0
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
@@ -235,10 +236,60 @@ export function Sidebar({
 
           {/* Settings */}
           <div className="px-4 pb-4">
-            <button className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-white/5 hover:text-zinc-400 transition-all duration-150">
-              <Settings className="w-3.5 h-3.5 shrink-0" />
-              Settings
+            <button
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-white/5 hover:text-zinc-400 transition-all duration-150"
+            >
+              <div className="flex items-center gap-2.5">
+                <Settings className="w-3.5 h-3.5 shrink-0" />
+                Settings
+              </div>
+              <ChevronUp className={`w-3 h-3 transition-transform duration-200 ${settingsOpen ? "" : "rotate-180"}`} />
             </button>
+
+            {/* Settings Panel */}
+            <div className={`overflow-hidden transition-all duration-200 ${settingsOpen ? "max-h-[300px] opacity-100 mt-2" : "max-h-0 opacity-0"}`}>
+              <div className="space-y-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
+                {/* Email notifications */}
+                <div className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-white/5 transition">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-3.5 h-3.5 text-zinc-600" />
+                    <span className="text-[11px] font-medium text-zinc-400">Email reports</span>
+                  </div>
+                  <button className="relative inline-flex h-4 w-7 shrink-0 rounded-full border border-white/10 bg-zinc-800 transition-colors">
+                    <span className="pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow transition translate-x-0" />
+                  </button>
+                </div>
+
+                {/* Export data */}
+                <button className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-300 transition">
+                  <Download className="w-3.5 h-3.5 text-zinc-600" />
+                  Export all reports
+                </button>
+
+                {/* API key */}
+                <button className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-300 transition">
+                  <Key className="w-3.5 h-3.5 text-zinc-600" />
+                  API access
+                </button>
+
+                {/* Support */}
+                <a
+                  href="https://t.me/+your_group"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-300 transition"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-zinc-600" />
+                  Support / Feedback
+                </a>
+
+                {/* Version */}
+                <div className="px-3 pt-2 pb-1">
+                  <span className="text-[9px] font-medium tracking-wider uppercase text-zinc-700">CMO v0.1.0 · Arc Testnet</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </aside>

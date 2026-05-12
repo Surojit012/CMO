@@ -1,13 +1,14 @@
 "use client";
 
-import { usePrivy, useToken } from "@privy-io/react-auth";
-import { useState, useEffect } from "react";
+import { usePrivy, useToken, useWallets } from "@privy-io/react-auth";
+import { useState, useEffect, useCallback } from "react";
 import { ChatContainer } from "@/components/ChatContainer";
 import { NewReportBanner } from "@/components/NewReportBanner";
 import { DailyReportModal } from "@/components/DailyReportModal";
 import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { WalletPanel } from "@/components/WalletPanel";
+import { getWalletBalanceWithMeta, getRemainingFreeAnalyses } from "@/lib/arc-payment";
 
 function getUserLabel(user: ReturnType<typeof usePrivy>["user"]) {
   if (!user) return "Unknown user";
@@ -20,11 +21,44 @@ export default function Home() {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
   const { ready, authenticated, user, login, logout } = usePrivy();
   const { getAccessToken } = useToken();
+  const { wallets } = useWallets();
   const [hasNewReportBadge, setHasNewReportBadge] = useState(false);
   const [externalReport, setExternalReport] = useState<string | null>(null);
   const [dailyReportModal, setDailyReportModal] = useState<{ markdown: string; timestamp: string } | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"analysis" | "audit" | "outreach">("analysis");
+
+  // Wallet state lifted for Navbar
+  const [balance, setBalance] = useState("0.00");
+  const [balanceSymbol, setBalanceSymbol] = useState("USDC");
+  const [freeAnalyses, setFreeAnalyses] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const wallet = wallets?.[0];
+  const walletAddress = wallet?.address;
+
+  const refreshBalance = useCallback(async (manual = false) => {
+    if (!walletAddress) return;
+    if (manual) setIsRefreshing(true);
+    try {
+      const result = await getWalletBalanceWithMeta(walletAddress);
+      setBalance(result.formattedBalance);
+      setBalanceSymbol(result.symbol || "USDC");
+      const freeResult = await getRemainingFreeAnalyses(walletAddress);
+      setFreeAnalyses(freeResult);
+    } catch { /* silent */ }
+    finally { if (manual) setIsRefreshing(false); }
+  }, [walletAddress]);
+
+  useEffect(() => {
+    if (!authenticated || !walletAddress) return;
+    refreshBalance();
+    const interval = setInterval(() => refreshBalance(), 15000);
+
+    const handler = () => refreshBalance(true);
+    window.addEventListener("refresh-wallet-stats", handler);
+    return () => { clearInterval(interval); window.removeEventListener("refresh-wallet-stats", handler); };
+  }, [authenticated, walletAddress, refreshBalance]);
 
   useEffect(() => {
     if (!authenticated || !user?.id) return;
@@ -82,18 +116,26 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#09090b] relative">
+    <main className="min-h-screen bg-[#09090b]">
       <Navbar
         userLabel={getUserLabel(user)}
-        balance="0.00"
-        balanceSymbol="USDC"
+        balance={balance}
+        balanceSymbol={balanceSymbol}
+        walletAddress={walletAddress}
+        freeAnalyses={freeAnalyses}
         onLogout={logout}
         onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
         showMenuButton={true}
+        onRefreshBalance={() => refreshBalance(true)}
+        isRefreshing={isRefreshing}
+        onFundWallet={() => window.dispatchEvent(new Event("open-fund-modal"))}
       />
+
+      {/* Hidden WalletPanel — kept for fund modal functionality */}
       <div className="hidden"><WalletPanel /></div>
 
-      <div className="flex pt-[52px]">
+      {/* Layout: Sidebar + Workspace — both scroll independently */}
+      <div className="flex pt-[52px] min-h-screen">
         <Sidebar
           activeTab={activeTab}
           onTabChange={setActiveTab}
@@ -106,7 +148,8 @@ export default function Home() {
           autonomousUrl=""
         />
 
-        <div className="flex-1 min-w-0">
+        {/* Main content — scrolls independently */}
+        <div className="flex-1 min-w-0 overflow-y-auto">
           <div className="mx-auto w-full max-w-[820px] px-4 pt-4 sm:px-6">
             <NewReportBanner
               onViewReport={(markdown, timestamp) => {
