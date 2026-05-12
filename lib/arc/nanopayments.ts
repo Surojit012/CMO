@@ -1,8 +1,11 @@
 /**
  * ERC-8183 Nanopayment Service for CMO Agent Runs
  *
- * Each agent run creates an onchain job on Arc Testnet:
- *   createJob → setBudget → approve USDC → fund → run agent → submit → complete
+ * Creates ONE consolidated ERC-8183 job per analysis session:
+ *   createJob → setBudget → approve USDC → fund → submit → complete
+ *
+ * Per-agent cost breakdown is embedded in the job description.
+ * Only 7 blockchain transactions per session (~15-20s on Arc Testnet).
  *
  * Server-side only — NEVER import this file in client components.
  */
@@ -13,7 +16,6 @@ import {
   keccak256,
   toHex,
   parseUnits,
-  formatUnits,
   decodeEventLog,
   type Address,
   type Hex,
@@ -29,7 +31,7 @@ const USDC_ADDRESS =
   "0x3600000000000000000000000000000000000000" as Address;
 
 /** Agent pricing in USDC (6 decimals) */
-const AGENT_PRICES: Record<string, string> = {
+export const AGENT_PRICES: Record<string, string> = {
   strategist: "0.20",
   copywriter: "0.20",
   seo: "0.20",
@@ -39,6 +41,8 @@ const AGENT_PRICES: Record<string, string> = {
   critic: "0.10",
   aggregator: "0.10",
 };
+
+const ALL_AGENTS = ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit", "critic", "aggregator"] as const;
 
 // ─── ABI ─────────────────────────────────────────────────────────────────────
 
@@ -100,28 +104,6 @@ const agenticCommerceAbi = [
     outputs: [],
   },
   {
-    type: "function",
-    name: "getJob",
-    stateMutability: "view",
-    inputs: [{ name: "jobId", type: "uint256" }],
-    outputs: [
-      {
-        type: "tuple",
-        components: [
-          { name: "id", type: "uint256" },
-          { name: "client", type: "address" },
-          { name: "provider", type: "address" },
-          { name: "evaluator", type: "address" },
-          { name: "description", type: "string" },
-          { name: "budget", type: "uint256" },
-          { name: "expiredAt", type: "uint256" },
-          { name: "status", type: "uint8" },
-          { name: "hook", type: "address" },
-        ],
-      },
-    ],
-  },
-  {
     type: "event",
     name: "JobCreated",
     inputs: [
@@ -151,13 +133,12 @@ const erc20Abi = [
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export type AgentJobResult = {
-  output: string;
+export type SessionSettlementResult = {
   jobId: string | null;
   txHash: string | null;
-  cost: string;
-  agentName: string;
+  totalCost: string;
   settled: boolean;
+  agentBreakdown: Array<{ agentName: string; cost: string }>;
 };
 
 // ─── Service ─────────────────────────────────────────────────────────────────
@@ -188,60 +169,73 @@ export class NanopaymentService {
     });
   }
 
-  /**
-   * Run a single agent job through the full ERC-8183 lifecycle.
-   *
-   * 1. createJob  2. setBudget  3. approve USDC  4. fund
-   * 5. execute agent  6. submit deliverable  7. complete
-   *
-   * If any onchain step fails, the agent output is still returned.
-   */
-  async runAgentJob(
-    agentName: string,
-    agentOutputFn: () => Promise<string>,
-    userWalletAddress?: string
-  ): Promise<AgentJobResult> {
-    const price = AGENT_PRICES[agentName] ?? "0.20";
-    const cost = price;
+  get isEnabled(): boolean {
+    return this.enabled;
+  }
 
-    // If nanopayments are disabled, just run the agent
+  /**
+   * Settle ONE consolidated ERC-8183 job for the entire analysis session.
+   *
+   * Creates a single job with the total cost of all agents. The job description
+   * includes per-agent cost breakdown. Only 7 blockchain transactions total.
+   *
+   * Lifecycle: createJob → setBudget → approve → fund → submit → complete
+   */
+  async settleSessionJob(
+    deliverableContent: string,
+    userWalletAddress?: string
+  ): Promise<SessionSettlementResult> {
+    const agentBreakdown = ALL_AGENTS.map((name) => ({
+      agentName: name,
+      cost: AGENT_PRICES[name] ?? "0.20",
+    }));
+    const totalCostNum = agentBreakdown.reduce((sum, a) => sum + parseFloat(a.cost), 0);
+    const totalCost = totalCostNum.toFixed(2);
+
     if (!this.enabled) {
-      const output = await agentOutputFn();
-      return { output, jobId: null, txHash: null, cost, agentName, settled: false };
+      console.warn("⚡ Nanopayments disabled — skipping session settlement");
+      return { jobId: null, txHash: null, totalCost, settled: false, agentBreakdown };
     }
 
     let jobId: bigint | null = null;
-    let finalTxHash: string | null = null;
 
     try {
-      const amount = parseUnits(price, 6);
+      const amount = parseUnits(totalCost, 6);
       const serverAddress = this.account.address;
       const expiredAt = BigInt(Math.floor(Date.now() / 1000) + 3600);
-      const description = `CMO agent: ${agentName}${userWalletAddress ? ` (user: ${userWalletAddress})` : ""}`;
+
+      // Build descriptive job description with per-agent breakdown
+      const costLines = agentBreakdown.map((a) => `${a.agentName}: ${a.cost} USDC`).join(", ");
+      const description = [
+        `CMO Growth Analysis Session`,
+        userWalletAddress ? `User: ${userWalletAddress}` : null,
+        `Agents: ${costLines}`,
+        `Total: ${totalCost} USDC`,
+      ].filter(Boolean).join(" | ");
 
       // Step 1: createJob
+      console.log("⚡ [Arc] Creating ERC-8183 session job...");
       const createJobHash = await this.walletClient.writeContract({
         address: AGENTIC_COMMERCE_CONTRACT,
         abi: agenticCommerceAbi,
         functionName: "createJob",
         args: [
-          serverAddress,                                        // provider
-          serverAddress,                                        // evaluator
-          expiredAt,                                            // expiredAt
-          description,                                          // description
-          "0x0000000000000000000000000000000000000000" as Address, // hook (none)
+          serverAddress,
+          serverAddress,
+          expiredAt,
+          description,
+          "0x0000000000000000000000000000000000000000" as Address,
         ],
       });
 
       const createReceipt = await arcPublicClient.waitForTransactionReceipt({
         hash: createJobHash,
       });
-
-      // Extract jobId from JobCreated event
       jobId = this.extractJobId(createReceipt);
-      console.log(`🔗 Arc job created: ${jobId} (agent: ${agentName})`);
+      console.log(`⚡ [Arc] Job created: ${jobId}`);
 
       // Step 2: setBudget
+      console.log("⚡ [Arc] Setting budget...");
       const setBudgetHash = await this.walletClient.writeContract({
         address: AGENTIC_COMMERCE_CONTRACT,
         abi: agenticCommerceAbi,
@@ -251,6 +245,7 @@ export class NanopaymentService {
       await arcPublicClient.waitForTransactionReceipt({ hash: setBudgetHash });
 
       // Step 3: approve USDC
+      console.log("⚡ [Arc] Approving USDC...");
       const approveHash = await this.walletClient.writeContract({
         address: USDC_ADDRESS,
         abi: erc20Abi,
@@ -260,6 +255,7 @@ export class NanopaymentService {
       await arcPublicClient.waitForTransactionReceipt({ hash: approveHash });
 
       // Step 4: fund escrow
+      console.log("⚡ [Arc] Funding escrow...");
       const fundHash = await this.walletClient.writeContract({
         address: AGENTIC_COMMERCE_CONTRACT,
         abi: agenticCommerceAbi,
@@ -268,11 +264,9 @@ export class NanopaymentService {
       });
       await arcPublicClient.waitForTransactionReceipt({ hash: fundHash });
 
-      // Step 5: Run the agent
-      const output = await agentOutputFn();
-
-      // Step 6: submit deliverable (keccak256 of agent output)
-      const deliverableHash = keccak256(toHex(output));
+      // Step 5: submit deliverable (keccak256 of combined agent output)
+      console.log("⚡ [Arc] Submitting deliverable...");
+      const deliverableHash = keccak256(toHex(deliverableContent));
       const submitHash = await this.walletClient.writeContract({
         address: AGENTIC_COMMERCE_CONTRACT,
         abi: agenticCommerceAbi,
@@ -281,7 +275,8 @@ export class NanopaymentService {
       });
       await arcPublicClient.waitForTransactionReceipt({ hash: submitHash });
 
-      // Step 7: complete (evaluator approves)
+      // Step 6: complete
+      console.log("⚡ [Arc] Completing job...");
       const reasonHash = keccak256(toHex("approved"));
       const completeHash = await this.walletClient.writeContract({
         address: AGENTIC_COMMERCE_CONTRACT,
@@ -291,50 +286,28 @@ export class NanopaymentService {
       });
       await arcPublicClient.waitForTransactionReceipt({ hash: completeHash });
 
-      finalTxHash = completeHash;
-      console.log(`✅ Arc job settled: ${finalTxHash} (agent: ${agentName}, cost: ${cost} USDC)`);
+      console.log(`✅ [Arc] Session job settled: ${completeHash} (${totalCost} USDC)`);
 
       return {
-        output,
         jobId: jobId.toString(),
-        txHash: finalTxHash,
-        cost,
-        agentName,
+        txHash: completeHash,
+        totalCost,
         settled: true,
+        agentBreakdown,
       };
     } catch (error) {
       console.warn(
-        `⚠️ Arc nanopayment failed for ${agentName}:`,
+        "⚠️ Arc session settlement failed:",
         error instanceof Error ? error.message : error
       );
-
-      // Graceful degradation: still run the agent if we haven't yet
-      try {
-        const output = await agentOutputFn();
-        return {
-          output,
-          jobId: jobId?.toString() ?? null,
-          txHash: finalTxHash,
-          cost,
-          agentName,
-          settled: false,
-        };
-      } catch (agentError) {
-        // If the agent itself failed, re-throw
-        throw agentError;
-      }
+      return {
+        jobId: jobId?.toString() ?? null,
+        txHash: null,
+        totalCost,
+        settled: false,
+        agentBreakdown,
+      };
     }
-  }
-
-  /**
-   * Calculate total cost for a set of agents.
-   */
-  static calculateTotalCost(agentNames: string[]): string {
-    let total = 0;
-    for (const name of agentNames) {
-      total += parseFloat(AGENT_PRICES[name] ?? "0.20");
-    }
-    return `${total.toFixed(2)} USDC`;
   }
 
   /**

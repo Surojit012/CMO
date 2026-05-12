@@ -10,7 +10,6 @@ import {
 } from "./market-audit-bridge";
 import type { AgentEventCallback } from "./agent-events";
 import { nanopaymentService } from "./arc/nanopayments";
-import { JobTracker } from "./arc/jobTracker";
 
 type WebsiteContext = {
   url: string;
@@ -216,66 +215,42 @@ export async function generateGrowthAnalysis(
   );
   onEvent?.({ agent: "aggregator", status: "done", message: "Growth plan finalized.", timestamp: Date.now() });
 
-  // Step 8: Fire-and-forget nanopayment settlement (non-blocking)
-  // Each agent job runs 7 onchain txs — doing this synchronously would timeout.
-  // Instead, we fire all settlements in parallel and don't await them.
-  const jobTracker = new JobTracker();
-  const allAgentNames = ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit", "critic", "aggregator"] as const;
-  const allOutputs: Record<string, string> = {
-    ...agentOutputs,
-    critic: JSON.stringify(criticResult),
-    aggregator: markdown,
-  };
-
-  // Fire settlement in background — do NOT await before returning
-  const settlementPromise = Promise.allSettled(
-    allAgentNames.map((name) =>
-      nanopaymentService
-        .runAgentJob(name, async () => allOutputs[name], userWalletAddress)
-        .then((result) => {
-          jobTracker.trackJob(name, result.jobId, result.cost, result.txHash, result.settled);
-          return result;
-        })
-        .catch((err) => {
-          console.warn(`⚠️ Background settlement failed for ${name}:`, err instanceof Error ? err.message : err);
-          jobTracker.trackJob(name, null, "0.00", null, false);
-        })
-    )
-  );
-
-  // Build an optimistic receipt showing expected costs
-  // (actual settlement happens in background)
-  const AGENT_PRICES: Record<string, string> = {
-    strategist: "0.20", copywriter: "0.20", seo: "0.20",
-    conversion: "0.20", distribution: "0.20", reddit: "0.15",
-    critic: "0.10", aggregator: "0.10",
-  };
-  const optimisticJobs = allAgentNames.map((name) => ({
-    agentName: name,
-    jobId: null,
-    cost: AGENT_PRICES[name] ?? "0.20",
-    txHash: null,
-    status: "settled" as const, // optimistic — actual settlement is in background
-    timestamp: Date.now(),
-  }));
-  const totalCost = optimisticJobs.reduce((sum, j) => sum + parseFloat(j.cost), 0).toFixed(2);
-
-  const arcReceipt: ArcReceipt = {
-    totalCost: `${totalCost} USDC`,
-    jobCount: optimisticJobs.length,
-    settledCount: optimisticJobs.length,
-    jobs: optimisticJobs,
-    arcScanLinks: [],
-  };
-
-  // Log when background settlement completes (non-blocking)
-  settlementPromise.then(() => {
-    const receipt = jobTracker.getSessionReceipt();
-    console.log(`⚡ Arc settlement complete: ${receipt.totalCost} across ${receipt.settledCount}/${receipt.jobCount} jobs`);
-    if (receipt.arcScanLinks.length > 0) {
-      console.log(`🔗 ArcScan: ${receipt.arcScanLinks[0]} (+${receipt.arcScanLinks.length - 1} more)`);
-    }
+  // Step 8: Settle consolidated ERC-8183 nanopayment job (AWAITED)
+  // One onchain job for the entire session — 7 txs total (~15-20s on Arc Testnet)
+  onEvent?.({ agent: "system", status: "thinking", message: "Settling ERC-8183 nanopayment on Arc Testnet…", timestamp: Date.now() });
+  const settlementResult = await nanopaymentService.settleSessionJob(markdown, userWalletAddress);
+  onEvent?.({
+    agent: "system",
+    status: "done",
+    message: settlementResult.settled
+      ? `⚡ Settled ${settlementResult.totalCost} USDC on Arc Testnet`
+      : "Settlement skipped (Arc RPC unavailable)",
+    timestamp: Date.now()
   });
+
+  // Build receipt from real settlement data
+  const arcReceipt: ArcReceipt = {
+    totalCost: `${settlementResult.totalCost} USDC`,
+    jobCount: 1,
+    settledCount: settlementResult.settled ? 1 : 0,
+    jobs: settlementResult.agentBreakdown.map((a) => ({
+      agentName: a.agentName,
+      jobId: settlementResult.jobId,
+      cost: a.cost,
+      txHash: settlementResult.txHash,
+      status: settlementResult.settled ? "settled" as const : "skipped" as const,
+      timestamp: Date.now(),
+    })),
+    arcScanLinks: settlementResult.txHash
+      ? [`https://testnet.arcscan.app/tx/${settlementResult.txHash}`]
+      : [],
+  };
+
+  console.log(
+    settlementResult.settled
+      ? `⚡ Arc receipt: ${arcReceipt.totalCost} | Job: ${settlementResult.jobId} | Tx: ${settlementResult.txHash}`
+      : `⚠️ Arc settlement skipped — receipt shows 0 settled`
+  );
 
   return {
     markdown,
@@ -286,4 +261,3 @@ export async function generateGrowthAnalysis(
     arcReceipt
   };
 }
-
