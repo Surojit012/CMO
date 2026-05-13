@@ -138,7 +138,7 @@ export default function Home() {
 
   if (!appId || appId === "your_privy_app_id") {
     return (
-      <main className="flex min-h-screen items-center justify-center px-6 bg-[#09090b]">
+      <main className="flex min-h-screen items-center justify-center px-6 bg-zinc-950">
         <div className="w-full max-w-md rounded-2xl bg-zinc-900/60 border border-white/[0.06] p-8 text-center">
           <p className="text-sm font-bold tracking-[0.2em] text-white mb-4">CMO</p>
           <h1 className="text-2xl font-semibold text-white">Privy app ID required</h1>
@@ -152,7 +152,7 @@ export default function Home() {
 
   if (!ready) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#09090b]">
+      <main className="flex min-h-screen items-center justify-center bg-zinc-950">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
@@ -163,7 +163,7 @@ export default function Home() {
 
   if (!authenticated) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-6 bg-[#09090b]">
+      <main className="flex min-h-screen items-center justify-center px-6 bg-zinc-950">
         <div className="w-full max-w-md rounded-2xl bg-zinc-900/60 border border-white/[0.06] p-8 text-center">
           <p className="text-sm font-bold tracking-[0.2em] text-white mb-2">CMO</p>
           <span className="rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500">Beta</span>
@@ -178,7 +178,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-[#09090b]">
+    <main className="min-h-screen bg-zinc-950">
       <Navbar
         userLabel={getUserLabel(user)}
         balance={balance}

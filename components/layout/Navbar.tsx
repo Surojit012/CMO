@@ -60,7 +60,7 @@ export function Navbar({
   };
 
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 flex items-center justify-between h-[52px] px-4 sm:px-6 bg-[#09090b]/80 backdrop-blur-xl border-b border-white/5">
+    <nav className="fixed top-0 inset-x-0 z-50 flex items-center justify-between h-[52px] px-4 sm:px-6 bg-zinc-950/80 backdrop-blur-xl border-b border-white/5">
       {/* Left */}
       <div className="flex items-center gap-3">
         {showMenuButton && (

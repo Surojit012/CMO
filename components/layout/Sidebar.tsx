@@ -131,7 +131,7 @@ export function Sidebar({
         className={`
           fixed top-[52px] left-0 bottom-0 z-50
           w-[280px] flex flex-col overflow-hidden
-          bg-[#09090b] border-r border-white/5
+          bg-zinc-950 border-r border-white/5
           transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]
           lg:sticky lg:top-[52px] lg:z-auto lg:h-[calc(100vh-52px)] lg:translate-x-0
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
