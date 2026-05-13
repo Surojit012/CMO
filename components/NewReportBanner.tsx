@@ -86,7 +86,7 @@ export function NewReportBanner({ onViewReport }: NewReportBannerProps) {
       <button
         onClick={handleViewReport}
         disabled={loading}
-        className="w-full rounded-full bg-white px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-zinc-100 disabled:opacity-50 sm:w-auto sm:px-5"
+        className="w-full rounded-full bg-white px-4 py-2 text-sm font-bold text-black transition hover:bg-zinc-100 disabled:opacity-50 sm:w-auto sm:px-5"
       >
         {loading ? "Loading..." : (reportData.hasNewReport ? "View AI Report" : "Open Report")}
       </button>

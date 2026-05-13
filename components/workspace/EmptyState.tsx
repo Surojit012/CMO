@@ -210,7 +210,7 @@ export function EmptyState({
             type={onButtonClick ? "button" : "submit"}
             onClick={onButtonClick ? () => onButtonClick() : undefined}
             disabled={disabled || buttonLoading || (!onButtonClick && !inputValue.trim())}
-            className="w-full h-12 sm:h-14 rounded-full bg-white text-zinc-950 text-sm font-semibold transition hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-full h-12 sm:h-14 rounded-full bg-white text-black text-sm font-semibold transition hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             {buttonLoading ? "Processing..." : ctaLabel}
           </button>

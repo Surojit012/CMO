@@ -60,7 +60,7 @@ export function Navbar({
   };
 
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 flex items-center justify-between h-[52px] px-4 sm:px-6 bg-zinc-950/80 backdrop-blur-xl border-b border-white/5">
+    <nav className="fixed top-0 inset-x-0 z-50 flex items-center justify-between h-[52px] px-4 sm:px-6 bg-zinc-900/80 backdrop-blur-xl border-b border-white/5">
       {/* Left */}
       <div className="flex items-center gap-3">
         {showMenuButton && (
@@ -180,7 +180,7 @@ export function Navbar({
                   if (onFundWallet) onFundWallet();
                   else window.dispatchEvent(new Event("open-fund-modal"));
                 }}
-                className="w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                className="w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-zinc-200"
               >
                 Fund Wallet
               </button>

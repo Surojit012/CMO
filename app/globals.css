@@ -74,13 +74,13 @@
   --color-zinc-900: #ffffff; /* Pure white elevated surfaces */
   --color-zinc-800: #f4f4f5; /* White hover states */
   --color-zinc-700: #d4d4d8; /* Light borders */
-  --color-zinc-600: #a1a1aa; /* Disabled */
-  --color-zinc-500: #71717a; /* Muted text */
-  --color-zinc-400: #52525b; /* Secondary text */
-  --color-zinc-300: #3f3f46; /* Normal text */
-  --color-zinc-200: #27272a; /* Darker text */
-  --color-zinc-100: #18181b; /* Near black */
-  --color-zinc-50: #09090b;  /* Black */
+  --color-zinc-600: #52525b; /* Disabled */
+  --color-zinc-500: #3f3f46; /* Muted text */
+  --color-zinc-400: #27272a; /* Secondary text */
+  --color-zinc-300: #18181b; /* Normal text */
+  --color-zinc-200: #09090b; /* Darker text */
+  --color-zinc-100: #000000; /* Near black */
+  --color-zinc-50: #000000;  /* Black */
   --color-black: #ffffff;
   --color-white: #09090b;
 

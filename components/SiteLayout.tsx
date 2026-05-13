@@ -35,7 +35,7 @@ export function PageNavbar() {
         <Link href="/contact" className="hidden text-xs font-medium text-zinc-400 transition hover:text-white sm:block sm:text-sm">Contact</Link>
         <Link
           href="/app"
-          className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200 sm:px-5 sm:py-2 sm:text-sm"
+          className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-200 sm:px-5 sm:py-2 sm:text-sm"
         >
           Launch App <ArrowRight className="h-3.5 w-3.5" />
         </Link>

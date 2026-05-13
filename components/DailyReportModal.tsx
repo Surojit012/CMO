@@ -66,7 +66,7 @@ export function DailyReportModal({ markdown, onClose, timestamp }: DailyReportMo
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-300">
-      <div className="relative flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-zinc-950 shadow-2xl ring-1 ring-white/10 animate-in zoom-in-95 duration-300">
+      <div className="relative flex h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-zinc-900 shadow-2xl ring-1 ring-white/10 animate-in zoom-in-95 duration-300">
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/5 bg-zinc-900/80 px-4 py-3 backdrop-blur-md sm:px-6">
