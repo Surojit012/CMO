@@ -100,14 +100,16 @@ const sections = [
   {
     id: "payments",
     Icon: Shield,
-    title: "Web3 Payments",
-    content: `CMO uses on-chain payments via Privy embedded wallets:
+    title: "ERC-8183 Nanopayments",
+    content: `CMO uses Arc's Agentic Commerce Protocol (ERC-8183) for transparent, per-agent micro-billing:
 
-- **Sign in:** Email, Google, or existing wallet — Privy creates an embedded wallet automatically
-- **Payment:** $5 USDC per analysis on Arc Testnet
-- **No subscriptions:** Pure pay-per-use model
-- **No credit card:** All payments are on-chain USDC
-- **3 free analyses:** Every new user gets 3 analyses free before payment is required`,
+**How it works:** Each analysis session creates ONE consolidated on-chain job. The job description embeds a per-agent cost breakdown (e.g., Strategist: $0.20, Critic: $0.10). Only 7 blockchain transactions per session (~15-20s on Arc Testnet).
+
+**Settlement lifecycle:** createJob → setBudget → approve USDC → fund escrow → submit deliverable → complete. The deliverable hash is a keccak256 of the combined agent output, permanently anchored on-chain.
+
+**Agent pricing:** Strategist, Copywriter, SEO, Conversion, Distribution: $0.20 each. Reddit Intel: $0.15. Critic, Aggregator: $0.10 each. A full 8-agent run costs ~$1.35 USDC.
+
+**Wallet:** Privy creates an embedded wallet automatically on sign-in (email, Google, or existing wallet). USDC balance is displayed in the navbar with live refresh. 3 free analyses for new users before payment is required.`,
   },
 ];
 

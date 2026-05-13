@@ -9,6 +9,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { WalletPanel } from "@/components/WalletPanel";
 import { getWalletBalanceWithMeta, getRemainingFreeAnalyses } from "@/lib/arc-payment";
+import type { HistorySession, SavedReport } from "@/components/HistorySidebar";
 
 function getUserLabel(user: ReturnType<typeof usePrivy>["user"]) {
   if (!user) return "Unknown user";
@@ -33,6 +34,11 @@ export default function Home() {
   const [balanceSymbol, setBalanceSymbol] = useState("USDC");
   const [freeAnalyses, setFreeAnalyses] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Autonomous mode state
+  const [autonomousEnabled, setAutonomousEnabled] = useState(false);
+  const [autonomousLoading, setAutonomousLoading] = useState(false);
+  const [autonomousUrl, setAutonomousUrl] = useState("");
 
   const wallet = wallets?.[0];
   const walletAddress = wallet?.address;
@@ -60,6 +66,7 @@ export default function Home() {
     return () => { clearInterval(interval); window.removeEventListener("refresh-wallet-stats", handler); };
   }, [authenticated, walletAddress, refreshBalance]);
 
+  // Fetch autonomous state on mount
   useEffect(() => {
     if (!authenticated || !user?.id) return;
     (async () => {
@@ -70,9 +77,64 @@ export default function Home() {
         });
         const data = await res.json();
         setHasNewReportBadge(data.hasNewReport);
+        if (data.enabled !== undefined) setAutonomousEnabled(data.enabled);
+        if (data.url) setAutonomousUrl(data.url);
       } catch {}
     })();
   }, [authenticated, user?.id]);
+
+  // Toggle autonomous mode
+  const handleAutonomousToggle = useCallback(async () => {
+    if (!user?.id || !autonomousUrl) return;
+    setAutonomousLoading(true);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch("/api/autonomous", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          enabled: !autonomousEnabled,
+          url: autonomousUrl,
+        }),
+      });
+      if (res.ok) {
+        setAutonomousEnabled(!autonomousEnabled);
+      }
+    } catch { /* silent */ }
+    finally { setAutonomousLoading(false); }
+  }, [user?.id, autonomousEnabled, autonomousUrl]);
+
+  // Handle history session click — load the saved report
+  const handleSessionSelect = useCallback((session: HistorySession, specificAnalysis?: SavedReport) => {
+    const report = specificAnalysis || session.analyses[0];
+    if (!report) return;
+
+    // Set the correct tab based on report type
+    if (report.type === "audit") {
+      setActiveTab("audit");
+    } else if (report.type === "outreach") {
+      setActiveTab("outreach");
+    } else {
+      setActiveTab("analysis");
+    }
+
+    // Load the report data into the workspace
+    if (report.data) {
+      const reportContent = typeof report.data === "string" ? report.data : JSON.stringify(report.data);
+      setExternalReport(reportContent);
+    }
+
+    // Track the autonomous URL from the last analyzed site
+    if (session.urlAnalyzed) {
+      setAutonomousUrl(session.urlAnalyzed);
+    }
+
+    // Close sidebar on mobile
+    setSidebarOpen(false);
+  }, []);
 
   if (!appId || appId === "your_privy_app_id") {
     return (
@@ -139,13 +201,13 @@ export default function Home() {
         <Sidebar
           activeTab={activeTab}
           onTabChange={setActiveTab}
-          onSessionSelect={() => {}}
+          onSessionSelect={handleSessionSelect}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          autonomousEnabled={false}
-          autonomousLoading={false}
-          onAutonomousToggle={() => {}}
-          autonomousUrl=""
+          autonomousEnabled={autonomousEnabled}
+          autonomousLoading={autonomousLoading}
+          onAutonomousToggle={handleAutonomousToggle}
+          autonomousUrl={autonomousUrl}
         />
 
         {/* Main content — scrolls independently */}

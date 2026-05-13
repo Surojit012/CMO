@@ -104,7 +104,7 @@ function Hero() {
           </Link>
         </motion.div>
         <motion.p variants={fadeUp} className="mt-8 text-xs font-medium tracking-wide text-zinc-500 sm:text-sm">
-          3 free analyses · then $5 USDC · Web3 native
+          Pay-per-agent from $0.10 · ERC-8183 nanopayments · Arc native
         </motion.p>
       </motion.div>
     </section>
@@ -278,7 +278,7 @@ function Features() {
           <BentoCard title="Autonomous Mode" desc="CMO re-analyzes your site every day at 9 AM UTC automatically. Get fresh growth intel without lifting a finger." Icon={RefreshCw} />
           <BentoCard title="Execution Layer" desc="Not just ideas — generates tweet threads, ad copy, blog posts, and 30-day content plans. One-click publish to Dev.to and Hashnode." className="md:col-span-2" Icon={Settings} />
           <BentoCard title="Memory System" desc="Stores past analyses in Redis. Learns from your thumbs-up/down feedback to reinforce what works and avoid what doesn't." Icon={Brain} />
-          <BentoCard title="Web3 Native" desc="Pay with USDC on Arc. No credit card. No subscription. $5 per analysis after 3 free." Icon={Gem} />
+          <BentoCard title="ERC-8183 Nanopayments" desc="Pay per-agent from $0.10 USDC via Arc's Agentic Commerce Protocol. One consolidated on-chain job per session — full cost transparency, no subscriptions." Icon={Gem} />
           <BentoCard title="GEO Readiness" desc="Checks if your site is optimized for AI search engines like ChatGPT, Perplexity, and Google AI Overviews." className="md:col-span-1" Icon={Search} />
           <BentoCard title="Quality Auditor" desc="Every output passes through a Groq-powered Critic before synthesis. Hallucinations, vague claims, and wrong product names are flagged and suppressed automatically." className="md:col-span-1" Icon={Check} />
         </div>
@@ -325,7 +325,7 @@ function Pricing() {
             <p className="text-xs font-bold uppercase tracking-wider text-zinc-500">Free Trial</p>
             <p className="mt-3 text-3xl font-extrabold text-white sm:text-4xl">3 <span className="text-base font-bold text-zinc-400 sm:text-lg">analyses</span></p>
             <ul className="mt-6 space-y-2.5 text-xs text-zinc-400 sm:text-sm">
-              {["Full feature access", "All 7 AI specialists", "3 analysis engines", "Community outreach plans", "Execution buttons"].map((f, i) => (
+              {["Full feature access", "All 8 AI specialists", "3 analysis engines", "Community outreach plans", "Execution buttons"].map((f, i) => (
                 <li key={i} className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-white shrink-0" />{f}</li>
               ))}
             </ul>
@@ -336,10 +336,10 @@ function Pricing() {
           {/* Paid */}
           <motion.div variants={fadeUp} className="relative rounded-2xl border border-white/20 bg-zinc-900/80 p-6 text-left ring-1 ring-white/10 sm:p-8">
             <div className="absolute -top-3 right-6 rounded-full bg-white px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider text-black">Popular</div>
-            <p className="text-xs font-bold uppercase tracking-wider text-white">Pay Per Use</p>
-            <p className="mt-3 text-3xl font-extrabold text-white sm:text-4xl">$5 <span className="text-base font-bold text-zinc-400 sm:text-lg">USDC / analysis</span></p>
+            <p className="text-xs font-bold uppercase tracking-wider text-white">Pay Per Agent</p>
+            <p className="mt-3 text-3xl font-extrabold text-white sm:text-4xl">$0.10 <span className="text-base font-bold text-zinc-400 sm:text-lg">— $0.20 / agent</span></p>
             <ul className="mt-6 space-y-2.5 text-xs text-zinc-400 sm:text-sm">
-              {["No subscription", "No credit card", "Pay with crypto", "Privy embedded wallet", "Unlimited analyses"].map((f, i) => (
+              {["ERC-8183 nanopayments", "Per-agent micro-billing", "On-chain cost transparency", "Privy embedded wallet", "No subscriptions ever"].map((f, i) => (
                 <li key={i} className="flex items-center gap-2"><Check className="h-3.5 w-3.5 text-white shrink-0" />{f}</li>
               ))}
             </ul>
@@ -348,7 +348,7 @@ function Pricing() {
             </Link>
           </motion.div>
         </div>
-        <motion.p variants={fadeUp} className="mt-8 text-xs text-zinc-600">Running on Arc Testnet · Powered by Privy</motion.p>
+        <motion.p variants={fadeUp} className="mt-8 text-xs text-zinc-600">ERC-8183 Nanopayments on Arc Testnet · Powered by Privy</motion.p>
       </motion.div>
     </section>
   );
@@ -400,7 +400,7 @@ function Comparison() {
               ))}
               <tr className="border-b border-white/10">
                 <td className="py-3 pr-4 text-zinc-300">Cost</td>
-                <td className="py-3 px-3 text-center font-bold text-white">$5/use</td>
+                <td className="py-3 px-3 text-center font-bold text-white">~$1.35</td>
                 <td className="py-3 px-3 text-center text-zinc-400">$99/mo</td>
                 <td className="py-3 px-3 text-center text-zinc-400">$5k+/mo</td>
                 <td className="py-3 pl-3 text-center text-zinc-400">Hours/day</td>
@@ -457,7 +457,7 @@ function Footer() {
           </a>
         </div>
       </div>
-      <p className="mt-6 text-center text-[10px] text-zinc-700 sm:text-xs">Built on Arc Testnet · Powered by Privy</p>
+      <p className="mt-6 text-center text-[10px] text-zinc-700 sm:text-xs">ERC-8183 Nanopayments on Arc Testnet · Powered by Privy</p>
     </footer>
   );
 }

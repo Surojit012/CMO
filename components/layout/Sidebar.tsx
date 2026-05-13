@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { usePrivy, useToken } from "@privy-io/react-auth";
-import { X, Loader2, Settings, ChevronUp, Bell, Download, Key, HelpCircle } from "lucide-react";
+import { X, Loader2, Settings, ChevronUp, Bell, Download, Key, HelpCircle, BarChart3, Search, Radio } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { HistorySession, SavedReport } from "@/components/HistorySidebar";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
@@ -41,10 +42,10 @@ function extractDomain(url: string): string {
   }
 }
 
-const MODE_ITEMS: { key: ActiveTab; label: string; icon: string }[] = [
-  { key: "analysis", label: "Growth Analysis", icon: "📊" },
-  { key: "audit",    label: "Market Audit",    icon: "🔍" },
-  { key: "outreach", label: "Outreach Engine", icon: "📡" },
+const MODE_ITEMS: { key: ActiveTab; label: string; Icon: LucideIcon }[] = [
+  { key: "analysis", label: "Growth Analysis", Icon: BarChart3 },
+  { key: "audit",    label: "Market Audit",    Icon: Search },
+  { key: "outreach", label: "Outreach Engine", Icon: Radio },
 ];
 
 function getTypeLabel(type: string) {
@@ -156,7 +157,7 @@ export function Sidebar({
                   : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
               }`}
             >
-              <span className="text-base">{item.icon}</span>
+              <item.Icon className="w-4 h-4 shrink-0" />
               {item.label}
             </button>
           ))}
