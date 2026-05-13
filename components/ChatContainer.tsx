@@ -217,20 +217,46 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
 
   useEffect(() => {
     if (externalReport) {
-      const growthResponse = parseGrowthMarkdown(externalReport);
-      setAnalysisMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          analysisId: `autonomous-${Date.now()}`,
-          content: growthResponse,
-          feedback: null
+      if (activeTab === "audit") {
+        try {
+          const auditData = JSON.parse(externalReport);
+          setAuditMessages([
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              type: "audit",
+              auditData: auditData
+            } as any
+          ]);
+        } catch (e) {
+          console.error("Failed to parse audit history", e);
         }
-      ]);
+      } else if (activeTab === "outreach") {
+        try {
+          const planData = JSON.parse(externalReport);
+          // For outreach history, we set the context to a mock AnalyzeSuccessResponse 
+          // containing the plan, or we can just pass the plan down.
+          // The easiest way is to pass the plan through outreachContext but cast it appropriately.
+          // Since outreachContext expects AnalyzeSuccessResponse, we can pass it as a special flag.
+          setOutreachContext(planData as any);
+        } catch (e) {
+          console.error("Failed to parse outreach history", e);
+        }
+      } else {
+        const growthResponse = parseGrowthMarkdown(externalReport);
+        setAnalysisMessages([
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            analysisId: `history-${Date.now()}`,
+            content: growthResponse,
+            feedback: null
+          }
+        ]);
+      }
       onReportLoaded?.();
     }
-  }, [externalReport, onReportLoaded]);
+  }, [externalReport, activeTab, onReportLoaded]);
 
   useEffect(() => {
     return () => {

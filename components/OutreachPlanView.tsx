@@ -290,6 +290,12 @@ export function OutreachPlanView({ analysisData, tone: passedTone = "casual", se
   const fetchPlan = async (forceRegenerate = false) => {
     if (!analysisData) return;
     
+    // Check if it's already an OutreachPlan (e.g. loaded from history)
+    if ('communities' in analysisData && 'phases' in analysisData) {
+      setPlan(analysisData as unknown as OutreachPlan);
+      return;
+    }
+
     // Check local storage first if not forcing
     const cacheKey = `outreach_plan_${analysisData.analysisId}_${tone}`;
     if (!forceRegenerate) {
