@@ -69,20 +69,20 @@
   --color-toggle-bg: #e2e8f0;
   --color-toggle-active: #10b981;
 
-  /* Tailwind v4 Color Overrides - Invert the scale */
-  --color-zinc-950: #ffffff;
-  --color-zinc-900: #f8fafc;
-  --color-zinc-800: #f1f5f9;
-  --color-zinc-700: #e2e8f0;
-  --color-zinc-600: #cbd5e1;
-  --color-zinc-500: #94a3b8;
-  --color-zinc-400: #64748b;
-  --color-zinc-300: #475569;
-  --color-zinc-200: #334155;
-  --color-zinc-100: #1e293b;
-  --color-zinc-50: #0f172a;
+  /* Tailwind v4 Color Overrides - Professional 70/30 scale */
+  --color-zinc-950: #e4e4e7; /* Gray workspace background */
+  --color-zinc-900: #ffffff; /* Pure white elevated surfaces */
+  --color-zinc-800: #f4f4f5; /* White hover states */
+  --color-zinc-700: #d4d4d8; /* Light borders */
+  --color-zinc-600: #a1a1aa; /* Disabled */
+  --color-zinc-500: #71717a; /* Muted text */
+  --color-zinc-400: #52525b; /* Secondary text */
+  --color-zinc-300: #3f3f46; /* Normal text */
+  --color-zinc-200: #27272a; /* Darker text */
+  --color-zinc-100: #18181b; /* Near black */
+  --color-zinc-50: #09090b;  /* Black */
   --color-black: #ffffff;
-  --color-white: #0f172a;
+  --color-white: #09090b;
 
   /* Legacy compat */
   --color-panel: rgba(241, 245, 249, 0.8);
