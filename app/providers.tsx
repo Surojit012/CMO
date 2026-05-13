@@ -1,6 +1,7 @@
 "use client";
 
 import { PrivyProvider } from "@privy-io/react-auth";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
 type ProvidersProps = {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ export function Providers({ children }: ProvidersProps) {
   const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || "";
 
   if (!appId || appId === "your_privy_app_id") {
-    return <>{children}</>;
+    return <ThemeProvider>{children}</ThemeProvider>;
   }
 
   return (
@@ -41,7 +42,7 @@ export function Providers({ children }: ProvidersProps) {
         }
       }}
     >
-      {children}
+      <ThemeProvider>{children}</ThemeProvider>
     </PrivyProvider>
   );
 }

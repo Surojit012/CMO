@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePrivy, useToken } from "@privy-io/react-auth";
 import { X, Loader2, Settings, ChevronUp, Bell, Download, Key, HelpCircle } from "lucide-react";
 import type { HistorySession, SavedReport } from "@/components/HistorySidebar";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 function relativeTime(dateStr: string): string {
   const ms = Date.now() - new Date(dateStr).getTime();
@@ -210,27 +211,26 @@ export function Sidebar({
         </div>
 
         {/* ── BOTTOM SECTION — sticky, never scrolls ─── */}
-        <div className="flex-shrink-0 border-t border-white/5">
-          {/* Autonomous Mode */}
-          <div className="flex items-center justify-between px-4 py-3">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2.5 w-2.5">
+        <div className="flex-shrink-0 border-t border-[var(--color-border)]">
+          {/* Autonomous Mode — clean grid row */}
+          <div className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="relative flex h-2 w-2 shrink-0">
                 <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${autonomousEnabled ? "bg-emerald-400" : "bg-zinc-700"}`} />
-                <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${autonomousEnabled ? "bg-emerald-500" : "bg-zinc-600"}`} />
+                <span className={`relative inline-flex h-2 w-2 rounded-full ${autonomousEnabled ? "bg-emerald-500" : "bg-zinc-600"}`} />
               </span>
-              <div>
-                <p className="text-xs font-medium text-zinc-300">Autonomous</p>
-                <p className="text-[10px] text-zinc-600">{autonomousEnabled ? "Running daily" : "Paused"}</p>
+              <div className="min-w-0">
+                <p className="text-xs font-medium" style={{ color: "var(--color-fg)" }}>Autonomous</p>
+                <p className="text-[10px]" style={{ color: "var(--color-muted)" }}>{autonomousEnabled ? "Running daily" : "Paused"}</p>
               </div>
             </div>
             <button
               onClick={onAutonomousToggle}
               disabled={autonomousLoading || !autonomousUrl}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-white/10 transition-colors duration-200 ${
-                autonomousEnabled ? "bg-emerald-500" : "bg-zinc-800"
-              } ${autonomousLoading ? "opacity-50" : ""}`}
+              className={`cmo-toggle ${autonomousLoading ? "opacity-50" : ""}`}
+              data-active={autonomousEnabled ? "true" : "false"}
             >
-              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ${autonomousEnabled ? "translate-x-4" : "translate-x-0"}`} />
+              <span className="cmo-toggle-knob" />
             </button>
           </div>
 
@@ -238,7 +238,8 @@ export function Sidebar({
           <div className="px-4 pb-4">
             <button
               onClick={() => setSettingsOpen(!settingsOpen)}
-              className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-zinc-600 hover:bg-white/5 hover:text-zinc-400 transition-all duration-150"
+              className="w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium transition-all duration-150"
+              style={{ color: "var(--color-muted)" }}
             >
               <div className="flex items-center gap-2.5">
                 <Settings className="w-3.5 h-3.5 shrink-0" />
@@ -248,28 +249,37 @@ export function Sidebar({
             </button>
 
             {/* Settings Panel */}
-            <div className={`overflow-hidden transition-all duration-200 ${settingsOpen ? "max-h-[300px] opacity-100 mt-2" : "max-h-0 opacity-0"}`}>
-              <div className="space-y-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-2">
-                {/* Email notifications */}
-                <div className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-white/5 transition">
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-3.5 h-3.5 text-zinc-600" />
-                    <span className="text-[11px] font-medium text-zinc-400">Email reports</span>
+            <div className={`overflow-hidden transition-all duration-200 ${settingsOpen ? "max-h-[400px] opacity-100 mt-2" : "max-h-0 opacity-0"}`}>
+              <div className="space-y-1 rounded-xl border p-2" style={{ borderColor: "var(--color-border)", background: "var(--color-surface)" }}>
+                
+                {/* Theme Switcher */}
+                <div className="px-3 py-2.5">
+                  <p className="text-[10px] font-medium tracking-widest uppercase mb-2" style={{ color: "var(--color-muted)" }}>Theme</p>
+                  <ThemeSwitcher />
+                </div>
+
+                <div className="h-px mx-2" style={{ background: "var(--color-border)" }} />
+
+                {/* Email notifications — grid aligned */}
+                <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg px-3 py-2.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Bell className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-muted)" }} />
+                    <span className="text-[11px] font-medium" style={{ color: "var(--color-secondary)" }}>Email reports</span>
                   </div>
-                  <button className="relative inline-flex h-4 w-7 shrink-0 rounded-full border border-white/10 bg-zinc-800 transition-colors">
-                    <span className="pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow transition translate-x-0" />
+                  <button className="cmo-toggle" data-active="false">
+                    <span className="cmo-toggle-knob" />
                   </button>
                 </div>
 
                 {/* Export data */}
-                <button className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-300 transition">
-                  <Download className="w-3.5 h-3.5 text-zinc-600" />
+                <button className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium transition" style={{ color: "var(--color-secondary)" }}>
+                  <Download className="w-3.5 h-3.5" style={{ color: "var(--color-muted)" }} />
                   Export all reports
                 </button>
 
                 {/* API key */}
-                <button className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-300 transition">
-                  <Key className="w-3.5 h-3.5 text-zinc-600" />
+                <button className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium transition" style={{ color: "var(--color-secondary)" }}>
+                  <Key className="w-3.5 h-3.5" style={{ color: "var(--color-muted)" }} />
                   API access
                 </button>
 
@@ -278,15 +288,16 @@ export function Sidebar({
                   href="https://t.me/+your_group"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium text-zinc-400 hover:bg-white/5 hover:text-zinc-300 transition"
+                  className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium transition"
+                  style={{ color: "var(--color-secondary)" }}
                 >
-                  <HelpCircle className="w-3.5 h-3.5 text-zinc-600" />
+                  <HelpCircle className="w-3.5 h-3.5" style={{ color: "var(--color-muted)" }} />
                   Support / Feedback
                 </a>
 
                 {/* Version */}
                 <div className="px-3 pt-2 pb-1">
-                  <span className="text-[9px] font-medium tracking-wider uppercase text-zinc-700">CMO v0.1.0 · Arc Testnet</span>
+                  <span className="text-[9px] font-medium tracking-wider uppercase" style={{ color: "var(--color-muted)" }}>CMO v0.1.0 · Arc Testnet</span>
                 </div>
               </div>
             </div>

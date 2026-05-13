@@ -1,25 +1,65 @@
 @import "tailwindcss";
 
-:root {
-  --color-bg: #09090b;
-  --color-surface: rgba(24, 24, 27, 0.6);
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-hover: rgba(255, 255, 255, 0.12);
-  --color-fg: #f4f4f5;
-  --color-secondary: #a1a1aa;
-  --color-muted: #71717a;
+/* ── Theme: Dark (Navy Blue) ─────────────────────────────── */
+:root,
+.theme-dark {
+  --color-bg: #0b1120;
+  --color-bg-secondary: #111827;
+  --color-surface: rgba(17, 24, 39, 0.7);
+  --color-surface-hover: rgba(30, 41, 59, 0.6);
+  --color-border: rgba(148, 163, 184, 0.08);
+  --color-border-hover: rgba(148, 163, 184, 0.16);
+  --color-fg: #f1f5f9;
+  --color-secondary: #94a3b8;
+  --color-muted: #64748b;
   --color-accent: #ffffff;
+  --color-sidebar: #0a0f1e;
+  --color-navbar: #0b1120;
+  --color-input-bg: rgba(15, 23, 42, 0.8);
+  --color-card-bg: rgba(15, 23, 42, 0.6);
+  --color-toggle-bg: #1e293b;
+  --color-toggle-active: #10b981;
   --font-sans: "Avenir Next", "Helvetica Neue", "Segoe UI", sans-serif;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 
-  /* Legacy compat – some sub-components still reference these */
-  --color-panel: rgba(24, 24, 27, 0.6);
-  --color-panel-strong: #18181b;
-  --color-soft: rgba(255, 255, 255, 0.06);
-  --color-soft-strong: rgba(255, 255, 255, 0.12);
+  /* Legacy compat */
+  --color-panel: rgba(17, 24, 39, 0.6);
+  --color-panel-strong: #111827;
+  --color-soft: rgba(148, 163, 184, 0.06);
+  --color-soft-strong: rgba(148, 163, 184, 0.12);
   --color-fit-green: #22c55e;
   --color-fit-amber: #f59e0b;
   --color-fit-red: #ef4444;
+  color-scheme: dark;
+}
+
+/* ── Theme: Light ────────────────────────────────────────── */
+.theme-light {
+  --color-bg: #f8fafc;
+  --color-bg-secondary: #f1f5f9;
+  --color-surface: rgba(241, 245, 249, 0.8);
+  --color-surface-hover: rgba(226, 232, 240, 0.6);
+  --color-border: rgba(15, 23, 42, 0.08);
+  --color-border-hover: rgba(15, 23, 42, 0.16);
+  --color-fg: #0f172a;
+  --color-secondary: #475569;
+  --color-muted: #94a3b8;
+  --color-accent: #0f172a;
+  --color-sidebar: #ffffff;
+  --color-navbar: #ffffff;
+  --color-input-bg: #ffffff;
+  --color-card-bg: #ffffff;
+  --color-toggle-bg: #e2e8f0;
+  --color-toggle-active: #10b981;
+
+  --color-panel: rgba(241, 245, 249, 0.8);
+  --color-panel-strong: #f1f5f9;
+  --color-soft: rgba(15, 23, 42, 0.04);
+  --color-soft-strong: rgba(15, 23, 42, 0.08);
+  --color-fit-green: #16a34a;
+  --color-fit-amber: #d97706;
+  --color-fit-red: #dc2626;
+  color-scheme: light;
 }
 
 * {
@@ -292,4 +332,50 @@ select {
     font-size: 1.75rem !important;
     line-height: 1.15 !important;
   }
+}
+
+/* ── Light mode scrollbar ──────────────────────────────── */
+.theme-light ::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.12);
+}
+.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.25);
+}
+
+/* ── Light mode selection ──────────────────────────────── */
+.theme-light ::selection {
+  background: #0f172a;
+  color: #f8fafc;
+}
+
+/* ── Theme-aware toggle switch ─────────────────────────── */
+.cmo-toggle {
+  position: relative;
+  display: inline-flex;
+  height: 22px;
+  width: 40px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 9999px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-toggle-bg);
+  transition: background-color 200ms, border-color 200ms;
+}
+.cmo-toggle[data-active="true"] {
+  background-color: var(--color-toggle-active);
+  border-color: transparent;
+}
+.cmo-toggle .cmo-toggle-knob {
+  display: inline-block;
+  height: 18px;
+  width: 18px;
+  transform: translateX(1px);
+  border-radius: 9999px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 200ms;
+  margin-top: 1px;
+}
+.cmo-toggle[data-active="true"] .cmo-toggle-knob {
+  transform: translateX(19px);
 }
