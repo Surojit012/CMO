@@ -348,34 +348,4 @@ select {
   color: #f8fafc;
 }
 
-/* ── Theme-aware toggle switch ─────────────────────────── */
-.cmo-toggle {
-  position: relative;
-  display: inline-flex;
-  height: 22px;
-  width: 40px;
-  flex-shrink: 0;
-  cursor: pointer;
-  border-radius: 9999px;
-  border: 1px solid var(--color-border);
-  background-color: var(--color-toggle-bg);
-  transition: background-color 200ms, border-color 200ms;
-}
-.cmo-toggle[data-active="true"] {
-  background-color: var(--color-toggle-active);
-  border-color: transparent;
-}
-.cmo-toggle .cmo-toggle-knob {
-  display: inline-block;
-  height: 18px;
-  width: 18px;
-  transform: translateX(1px);
-  border-radius: 9999px;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-  transition: transform 200ms;
-  margin-top: 1px;
-}
-.cmo-toggle[data-active="true"] .cmo-toggle-knob {
-  transform: translateX(19px);
-}
+

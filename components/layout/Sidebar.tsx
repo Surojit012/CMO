@@ -212,25 +212,26 @@ export function Sidebar({
 
         {/* ── BOTTOM SECTION — sticky, never scrolls ─── */}
         <div className="flex-shrink-0 border-t border-[var(--color-border)]">
-          {/* Autonomous Mode — clean grid row */}
-          <div className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="relative flex h-2 w-2 shrink-0">
+          {/* Autonomous Mode */}
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-start gap-2.5">
+              <span className="relative flex h-2.5 w-2.5 mt-1 shrink-0">
                 <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${autonomousEnabled ? "bg-emerald-400" : "bg-zinc-700"}`} />
-                <span className={`relative inline-flex h-2 w-2 rounded-full ${autonomousEnabled ? "bg-emerald-500" : "bg-zinc-600"}`} />
+                <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${autonomousEnabled ? "bg-emerald-500" : "bg-zinc-600"}`} />
               </span>
-              <div className="min-w-0">
-                <p className="text-xs font-medium" style={{ color: "var(--color-fg)" }}>Autonomous</p>
-                <p className="text-[10px]" style={{ color: "var(--color-muted)" }}>{autonomousEnabled ? "Running daily" : "Paused"}</p>
+              <div>
+                <p className="text-xs font-medium leading-none mb-1" style={{ color: "var(--color-fg)" }}>Autonomous</p>
+                <p className="text-[10px] leading-none" style={{ color: "var(--color-muted)" }}>{autonomousEnabled ? "Running daily" : "Paused"}</p>
               </div>
             </div>
             <button
               onClick={onAutonomousToggle}
               disabled={autonomousLoading || !autonomousUrl}
-              className={`cmo-toggle ${autonomousLoading ? "opacity-50" : ""}`}
-              data-active={autonomousEnabled ? "true" : "false"}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                autonomousEnabled ? "bg-emerald-500" : "bg-zinc-700"
+              } ${autonomousLoading ? "opacity-50" : ""}`}
             >
-              <span className="cmo-toggle-knob" />
+              <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${autonomousEnabled ? "translate-x-4" : "translate-x-0"}`} />
             </button>
           </div>
 
@@ -260,14 +261,14 @@ export function Sidebar({
 
                 <div className="h-px mx-2" style={{ background: "var(--color-border)" }} />
 
-                {/* Email notifications — grid aligned */}
-                <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-lg px-3 py-2.5">
-                  <div className="flex items-center gap-2 min-w-0">
+                {/* Email notifications */}
+                <div className="flex items-center justify-between rounded-lg px-3 py-2.5">
+                  <div className="flex items-center gap-2">
                     <Bell className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--color-muted)" }} />
-                    <span className="text-[11px] font-medium" style={{ color: "var(--color-secondary)" }}>Email reports</span>
+                    <span className="text-[11px] font-medium leading-none" style={{ color: "var(--color-secondary)" }}>Email reports</span>
                   </div>
-                  <button className="cmo-toggle" data-active="false">
-                    <span className="cmo-toggle-knob" />
+                  <button className="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-zinc-700 transition-colors duration-200 ease-in-out focus:outline-none">
+                    <span className="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out translate-x-0" />
                   </button>
                 </div>
 
