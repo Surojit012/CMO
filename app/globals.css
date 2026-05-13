@@ -3,6 +3,7 @@
 /* ── Theme: Dark (Navy Blue) ─────────────────────────────── */
 :root,
 .theme-dark {
+  /* Core variables */
   --color-bg: #0b1120;
   --color-bg-secondary: #111827;
   --color-surface: rgba(17, 24, 39, 0.7);
@@ -22,6 +23,21 @@
   --font-sans: "Avenir Next", "Helvetica Neue", "Segoe UI", sans-serif;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 
+  /* Tailwind v4 Color Overrides - Navy Blue Dark Mode */
+  --color-zinc-950: #0b1120;
+  --color-zinc-900: #111827;
+  --color-zinc-800: #1e293b;
+  --color-zinc-700: #334155;
+  --color-zinc-600: #475569;
+  --color-zinc-500: #64748b;
+  --color-zinc-400: #94a3b8;
+  --color-zinc-300: #cbd5e1;
+  --color-zinc-200: #e2e8f0;
+  --color-zinc-100: #f1f5f9;
+  --color-zinc-50: #f8fafc;
+  --color-black: #050810;
+  --color-white: #ffffff;
+
   /* Legacy compat */
   --color-panel: rgba(17, 24, 39, 0.6);
   --color-panel-strong: #111827;
@@ -35,6 +51,7 @@
 
 /* ── Theme: Light ────────────────────────────────────────── */
 .theme-light {
+  /* Core variables */
   --color-bg: #f8fafc;
   --color-bg-secondary: #f1f5f9;
   --color-surface: rgba(241, 245, 249, 0.8);
@@ -52,6 +69,22 @@
   --color-toggle-bg: #e2e8f0;
   --color-toggle-active: #10b981;
 
+  /* Tailwind v4 Color Overrides - Invert the scale */
+  --color-zinc-950: #ffffff;
+  --color-zinc-900: #f8fafc;
+  --color-zinc-800: #f1f5f9;
+  --color-zinc-700: #e2e8f0;
+  --color-zinc-600: #cbd5e1;
+  --color-zinc-500: #94a3b8;
+  --color-zinc-400: #64748b;
+  --color-zinc-300: #475569;
+  --color-zinc-200: #334155;
+  --color-zinc-100: #1e293b;
+  --color-zinc-50: #0f172a;
+  --color-black: #ffffff;
+  --color-white: #0f172a;
+
+  /* Legacy compat */
   --color-panel: rgba(241, 245, 249, 0.8);
   --color-panel-strong: #f1f5f9;
   --color-soft: rgba(15, 23, 42, 0.04);
