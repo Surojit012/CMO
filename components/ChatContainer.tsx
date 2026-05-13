@@ -549,7 +549,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
     const wallet = wallets?.[0];
     if (showPaymentUpsell && wallet) {
       const balance = parseFloat(usdcBalance);
-      if (balance < 1.35) {
+      if (balance < getAgentPrice(selectedAgents)) {
         await handleFundWalletClick();
         return;
       }
@@ -905,18 +905,19 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
 
   const hasMessages = messages.length > 0 || Boolean(currentStep) || isWarRoomActive;
 
-  // Build ProgressTracker agent rows from war room
+  // Build ProgressTracker agent rows from war room — only show selected agents
+  const allAgentRows: (AgentRow & { key: string })[] = [
+    { key: "strategist", name: "Strategist", status: warRoomElapsed > 9 ? "complete" : warRoomElapsed > 4 ? "running" : "pending", cost: "0.20" },
+    { key: "copywriter", name: "Copywriter", status: warRoomElapsed > 16 ? "complete" : warRoomElapsed > 9 ? "running" : "pending", cost: "0.20" },
+    { key: "seo", name: "SEO Agent", status: warRoomElapsed > 17 ? "complete" : warRoomElapsed > 10 ? "running" : "pending", cost: "0.20" },
+    { key: "conversion", name: "Conversion", status: warRoomElapsed > 18 ? "complete" : warRoomElapsed > 10 ? "running" : "pending", cost: "0.20" },
+    { key: "distribution", name: "Distribution", status: warRoomElapsed > 19 ? "complete" : warRoomElapsed > 11 ? "running" : "pending", cost: "0.20" },
+    { key: "reddit", name: "Reddit Intel", status: warRoomElapsed > 20 ? "complete" : warRoomElapsed > 11 ? "running" : "pending", cost: "0.15" },
+    { key: "critic", name: "Critic", status: warRoomElapsed > 26 ? "complete" : warRoomElapsed > 21 ? "running" : "pending", cost: "0.10" },
+    { key: "aggregator", name: "Aggregator", status: warRoomElapsed > 35 ? "complete" : warRoomElapsed > 27 ? "running" : "pending", cost: "0.10" },
+  ];
   const progressAgents: AgentRow[] = isWarRoomActive
-    ? [
-        { name: "Strategist", status: warRoomElapsed > 9 ? "complete" : warRoomElapsed > 4 ? "running" : "pending", cost: "0.20" },
-        { name: "Copywriter", status: warRoomElapsed > 16 ? "complete" : warRoomElapsed > 9 ? "running" : "pending", cost: "0.20" },
-        { name: "SEO Agent", status: warRoomElapsed > 17 ? "complete" : warRoomElapsed > 10 ? "running" : "pending", cost: "0.20" },
-        { name: "Conversion", status: warRoomElapsed > 18 ? "complete" : warRoomElapsed > 10 ? "running" : "pending", cost: "0.20" },
-        { name: "Distribution", status: warRoomElapsed > 19 ? "complete" : warRoomElapsed > 11 ? "running" : "pending", cost: "0.20" },
-        { name: "Reddit Intel", status: warRoomElapsed > 20 ? "complete" : warRoomElapsed > 11 ? "running" : "pending", cost: "0.15" },
-        { name: "Critic", status: warRoomElapsed > 26 ? "complete" : warRoomElapsed > 21 ? "running" : "pending", cost: "0.10" },
-        { name: "Aggregator", status: warRoomElapsed > 35 ? "complete" : warRoomElapsed > 27 ? "running" : "pending", cost: "0.10" },
-      ]
+    ? allAgentRows.filter(row => selectedAgents.includes(row.key))
     : [];
 
   const analysisUrl = messages.find(m => m.role === "user")?.url || inputValue || "";
