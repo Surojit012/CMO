@@ -243,16 +243,49 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
           console.error("Failed to parse outreach history", e);
         }
       } else {
-        const growthResponse = parseGrowthMarkdown(externalReport);
-        setAnalysisMessages([
-          {
-            id: crypto.randomUUID(),
-            role: "assistant",
-            analysisId: `history-${Date.now()}`,
-            content: growthResponse,
-            feedback: null
+        try {
+          // In history, analysis data is saved as an AnalyzeSuccessResponse object
+          const data = JSON.parse(externalReport);
+          
+          // If it's a legacy saved report it might be just markdown, handle both
+          if (data && typeof data === 'object' && 'analysis' in data) {
+            setAnalysisMessages([
+              {
+                id: crypto.randomUUID(),
+                role: "assistant",
+                analysisId: data.analysisId || `history-${Date.now()}`,
+                content: data.analysis,
+                rawAgents: data.agents,
+                selectedAgents: data.selectedAgents,
+                feedback: null
+              }
+            ]);
+          } else {
+            // Fallback for old markdown-only history
+            const growthResponse = parseGrowthMarkdown(externalReport);
+            setAnalysisMessages([
+              {
+                id: crypto.randomUUID(),
+                role: "assistant",
+                analysisId: `history-${Date.now()}`,
+                content: growthResponse,
+                feedback: null
+              }
+            ]);
           }
-        ]);
+        } catch (e) {
+          // If it fails to parse as JSON, assume it's a raw markdown string
+          const growthResponse = parseGrowthMarkdown(externalReport);
+          setAnalysisMessages([
+            {
+              id: crypto.randomUUID(),
+              role: "assistant",
+              analysisId: `history-${Date.now()}`,
+              content: growthResponse,
+              feedback: null
+            }
+          ]);
+        }
       }
       onReportLoaded?.();
     }
