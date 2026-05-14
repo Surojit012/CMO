@@ -27,13 +27,38 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    if (ready && authenticated) {
+    if (ready && authenticated && user?.id) {
       const isComplete = localStorage.getItem("cmo_onboarding_complete");
+      const isSynced = localStorage.getItem("cmo_onboarding_synced");
+
       if (!isComplete) {
         router.push("/onboarding");
+      } else if (!isSynced) {
+        // Silent background sync for users who onboarded before we added the database
+        try {
+          const rawData = localStorage.getItem("cmo_onboarding_data");
+          if (rawData) {
+            const parsed = JSON.parse(rawData);
+            fetch("/api/onboarding", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                userId: user.id,
+                walletAddress: wallets?.[0]?.address || null,
+                profile: parsed.profile,
+                plan: parsed.plan,
+              }),
+            }).then(res => {
+              if (res.ok) localStorage.setItem("cmo_onboarding_synced", "true");
+            }).catch(() => {});
+          } else {
+             // If they don't have data at all, force them back through to collect it
+             router.push("/onboarding");
+          }
+        } catch (e) {}
       }
     }
-  }, [ready, authenticated, router]);
+  }, [ready, authenticated, user, wallets, router]);
   const [hasNewReportBadge, setHasNewReportBadge] = useState(false);
   const [externalReport, setExternalReport] = useState<string | null>(null);
   const [dailyReportModal, setDailyReportModal] = useState<{ markdown: string; timestamp: string } | null>(null);

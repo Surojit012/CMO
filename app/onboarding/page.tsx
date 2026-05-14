@@ -61,7 +61,7 @@ export default function OnboardingPage() {
     // Save to Supabase via API if logged in
     if (user?.id) {
       try {
-        await fetch("/api/onboarding", {
+        const res = await fetch("/api/onboarding", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -71,6 +71,9 @@ export default function OnboardingPage() {
             plan: selectedPlan,
           }),
         });
+        if (res.ok) {
+          localStorage.setItem("cmo_onboarding_synced", "true");
+        }
       } catch (error) {
         console.error("Failed to save onboarding to database", error);
       }
