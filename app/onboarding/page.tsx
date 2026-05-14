@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { ProfileStep } from "@/components/onboarding/ProfileStep";
 import { PlanStep } from "@/components/onboarding/PlanStep";
 import { WelcomeStep } from "@/components/onboarding/WelcomeStep";
@@ -28,6 +29,8 @@ const pageTransition = {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { user } = usePrivy();
+  const { wallets } = useWallets();
   const [step, setStep] = useState(0);
   const [profile, setProfile] = useState<ProfileData>({
     name: "",
@@ -47,15 +50,34 @@ export default function OnboardingPage() {
     setStep(2);
   }, []);
 
-  const handleFinish = useCallback(() => {
-    // Save onboarding data
+  const handleFinish = useCallback(async () => {
+    // Save to local storage for quick checks
     localStorage.setItem("cmo_onboarding_complete", "true");
     localStorage.setItem(
       "cmo_onboarding_data",
       JSON.stringify({ profile, plan: selectedPlan })
     );
+
+    // Save to Supabase via API if logged in
+    if (user?.id) {
+      try {
+        await fetch("/api/onboarding", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            walletAddress: wallets?.[0]?.address || null,
+            profile,
+            plan: selectedPlan,
+          }),
+        });
+      } catch (error) {
+        console.error("Failed to save onboarding to database", error);
+      }
+    }
+
     router.push("/app");
-  }, [profile, selectedPlan, router]);
+  }, [profile, selectedPlan, router, user, wallets]);
 
   return (
     <div className="relative min-h-screen bg-zinc-950 overflow-hidden">
