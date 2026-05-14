@@ -36,7 +36,7 @@ export function OutreachView({ context, sessionId, onSwitchToAnalysis }: Outreac
   }
 
   return (
-    <div className="animate-fade-in dark-override">
+    <div className="animate-fade-in">
       <OutreachPlanView analysisData={context} sessionId={sessionId} />
     </div>
   );

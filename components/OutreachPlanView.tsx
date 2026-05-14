@@ -20,7 +20,7 @@ function FitScoreBar({ score }: { score: number }) {
   return (
     <div className="flex items-center gap-2">
       <div className="text-xs font-bold w-6">{score}</div>
-      <div className="h-2 flex-1 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+      <div className="h-2 flex-1 rounded-full bg-zinc-700 overflow-hidden">
         <div 
           className={`h-full animate-fit-bar rounded-full ${score >= 80 ? 'bg-[#22c55e]' : score >= 60 ? 'bg-[#f59e0b]' : 'bg-[#ef4444]'}`} 
           style={{ width: `${width}%`, transition: "width 1s cubic-bezier(0.4, 0, 0.2, 1)" }} 
@@ -38,7 +38,7 @@ function CommunityBadge({ platform }: { platform: string }) {
       case 'indiehackers': return 'bg-blue-100 text-blue-700 ring-blue-200';
       case 'discord': return 'bg-indigo-100 text-indigo-700 ring-indigo-200';
       case 'twitter': return 'bg-sky-100 text-sky-700 ring-sky-200';
-      default: return 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 ring-zinc-200 dark:ring-white/10';
+      default: return 'bg-zinc-800 text-zinc-300 ring-white/10';
     }
   };
 
@@ -53,17 +53,17 @@ function ExpandableSection({ title, children, defaultOpen = false }: { title: st
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="rounded-xl ring-1 ring-black/5 dark:ring-white/10 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
+    <div className="rounded-xl ring-1 ring-white/10 bg-zinc-900 overflow-hidden shadow-sm">
       <button 
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex w-full items-center justify-between px-4 py-3 sm:px-5 sm:py-4 bg-zinc-50 dark:bg-zinc-800/50 hover:bg-zinc-100/50 dark:bg-zinc-800/50 transition"
+        className="flex w-full items-center justify-between px-4 py-3 sm:px-5 sm:py-4 bg-zinc-800/50 hover:bg-zinc-800/50 transition"
       >
-        <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">{title}</span>
-        {isOpen ? <ChevronUp className="w-4 h-4 text-zinc-500 dark:text-zinc-400 dark:text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500 dark:text-zinc-400 dark:text-zinc-500" />}
+        <span className="font-semibold text-zinc-100 text-sm">{title}</span>
+        {isOpen ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
       </button>
       {isOpen && (
-        <div className="p-4 sm:p-5 border-t border-black/5 dark:border-white/10">
+        <div className="p-4 sm:p-5 border-t border-white/10">
           {children}
         </div>
       )}
@@ -86,14 +86,14 @@ function PostTemplateEditor({ template }: { template: PostTemplate }) {
   };
 
   return (
-    <div className="mt-3 rounded-lg ring-1 ring-zinc-200 dark:ring-white/10 bg-zinc-50 dark:bg-zinc-800/50 overflow-hidden">
-      <div className="flex items-center justify-between px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border-b border-zinc-200 dark:border-white/10">
-        <span className="text-[11px] font-semibold tracking-wider text-zinc-500 dark:text-zinc-400 dark:text-zinc-500 uppercase">
+    <div className="mt-3 rounded-lg ring-1 ring-white/10 bg-zinc-800/50 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 bg-zinc-800 border-b border-white/10">
+        <span className="text-[11px] font-semibold tracking-wider text-zinc-500 uppercase">
           {template.type.replace('_', ' ')}
         </span>
         <button 
           onClick={handleCopy}
-          className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold px-2 py-1 bg-white dark:bg-zinc-900 rounded shadow-sm text-zinc-600 dark:text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:text-zinc-100 hover:bg-zinc-50 dark:bg-zinc-800/50 transition"
+          className="flex items-center gap-1 text-[10px] sm:text-xs font-semibold px-2 py-1 bg-zinc-900 rounded shadow-sm text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/50 transition"
         >
           {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
           {copied ? "Copied!" : "Copy"}
@@ -103,7 +103,7 @@ function PostTemplateEditor({ template }: { template: PostTemplate }) {
       <div className="p-3">
         {allTitles.length > 1 && (
           <div className="mb-2 flex items-center justify-between">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Title</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Title</label>
             <div className="flex gap-1">
               {allTitles.map((_, idx) => (
                 <button
@@ -120,16 +120,16 @@ function PostTemplateEditor({ template }: { template: PostTemplate }) {
           type="text" 
           value={allTitles[currentTitleIndex]}
           readOnly
-          className="w-full text-sm font-semibold bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-400 mb-2"
+          className="w-full text-sm font-semibold bg-zinc-900 border border-white/10 rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-400 mb-2"
         />
 
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           rows={6}
-          className="w-full text-xs sm:text-sm bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded p-2 focus:outline-none focus:ring-1 focus:ring-zinc-400 resize-y"
+          className="w-full text-xs sm:text-sm bg-zinc-900 border border-white/10 rounded p-2 focus:outline-none focus:ring-1 focus:ring-zinc-400 resize-y"
         />
-        <div className="text-right text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
+        <div className="text-right text-[10px] text-zinc-500 mt-1">
           {content.length} characters
         </div>
       </div>
@@ -172,18 +172,18 @@ function MetricsDashboard({ analysisId, targets }: { analysisId: string; targets
         const progress = Math.min(100, Math.round((current / (m.target || 1)) * 100));
         
         return (
-          <div key={m.key} className="bg-white dark:bg-zinc-900 rounded-xl p-3 ring-1 ring-black/5 dark:ring-white/10 shadow-sm">
-            <div className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">{m.label}</div>
+          <div key={m.key} className="bg-zinc-900 rounded-xl p-3 ring-1 ring-white/10 shadow-sm">
+            <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">{m.label}</div>
             <div className="flex items-end gap-1 mb-2">
               <input
                 type="number"
                 value={current}
                 onChange={(e) => updateMetric(m.key, e.target.value)}
-                className="w-14 text-xl font-bold bg-transparent border-b border-dashed border-zinc-300 dark:border-white/20 focus:outline-none focus:border-zinc-800 p-0"
+                className="w-14 text-xl font-bold bg-transparent border-b border-dashed border-zinc-300 focus:outline-none focus:border-zinc-800 p-0"
               />
-              <span className="text-xs text-zinc-400 dark:text-zinc-500 mb-1">/ {m.target}</span>
+              <span className="text-xs text-zinc-500 mb-1">/ {m.target}</span>
             </div>
-            <div className="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-zinc-800 rounded-full transition-all" 
                 style={{ width: `${progress}%` }}
@@ -219,36 +219,36 @@ function WeeklyTracker({ analysisId, tasks }: { analysisId: string; tasks: Outre
   const weekProgress = days.filter(d => completed[`w${week}_${d}`]).length / 5 * 100;
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm overflow-hidden">
-      <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-100 dark:border-white/5 flex items-center justify-between">
+    <div className="bg-zinc-900 rounded-xl ring-1 ring-white/10 shadow-sm overflow-hidden">
+      <div className="p-4 bg-zinc-800/50 border-b border-white/5 flex items-center justify-between">
         <select 
           value={week} 
           onChange={(e) => setWeek(Number(e.target.value))}
-          className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-white/10 rounded-md text-sm font-semibold px-2 py-1"
+          className="bg-zinc-900 border border-white/10 rounded-md text-sm font-semibold px-2 py-1"
         >
           {[1,2,3,4,5,6,7,8].map(w => <option key={w} value={w}>Week {w}</option>)}
         </select>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 dark:text-zinc-500">{weekProgress}%</span>
-          <div className="w-20 h-2 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+          <span className="text-xs font-bold text-zinc-500">{weekProgress}%</span>
+          <div className="w-20 h-2 bg-zinc-700 rounded-full overflow-hidden">
             <div className="h-full bg-blue-500 transition-all" style={{ width: `${weekProgress}%` }} />
           </div>
         </div>
       </div>
       <div className="p-2 sm:p-3 space-y-1">
         {days.map(day => (
-          <label key={day} className="flex items-start gap-3 p-2 rounded-lg hover:bg-zinc-50 dark:bg-zinc-800/50 cursor-pointer transition">
+          <label key={day} className="flex items-start gap-3 p-2 rounded-lg hover:bg-zinc-800/50 cursor-pointer transition">
             <div className="pt-0.5">
               <input 
                 type="checkbox" 
                 checked={completed[`w${week}_${day}`] || false}
                 onChange={() => toggleTask(day)}
-                className="w-4 h-4 rounded border-zinc-300 dark:border-white/20 text-zinc-900 dark:text-zinc-100 focus:ring-zinc-900"
+                className="w-4 h-4 rounded border-zinc-300 text-zinc-100 focus:ring-zinc-900"
               />
             </div>
             <div>
-              <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">{day}</div>
-              <div className={`text-sm ${completed[`w${week}_${day}`] ? 'text-zinc-400 dark:text-zinc-500 line-through' : 'text-zinc-700 dark:text-zinc-300'}`}>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">{day}</div>
+              <div className={`text-sm ${completed[`w${week}_${day}`] ? 'text-zinc-500 line-through' : 'text-zinc-300'}`}>
                 {tasks[day]}
               </div>
             </div>
@@ -262,17 +262,17 @@ function WeeklyTracker({ analysisId, tasks }: { analysisId: string; tasks: Outre
 function SkeletonLoader() {
   return (
     <div className="space-y-6 max-h-full overflow-y-auto w-full px-4 sm:px-6">
-      <div className="h-20 bg-zinc-100 dark:bg-zinc-800 animate-skeleton-pulse rounded-2xl"></div>
+      <div className="h-20 bg-zinc-800 animate-skeleton-pulse rounded-2xl"></div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[1,2,3,4].map(i => (
-          <div key={i} className="h-32 bg-zinc-100 dark:bg-zinc-800 animate-skeleton-pulse rounded-xl"></div>
+          <div key={i} className="h-32 bg-zinc-800 animate-skeleton-pulse rounded-xl"></div>
         ))}
       </div>
       
       <div className="space-y-4">
         {[1,2,3].map(i => (
-          <div key={i} className="h-16 bg-zinc-100 dark:bg-zinc-800 animate-skeleton-pulse rounded-xl"></div>
+          <div key={i} className="h-16 bg-zinc-800 animate-skeleton-pulse rounded-xl"></div>
         ))}
       </div>
     </div>
@@ -381,9 +381,9 @@ export function OutreachPlanView({ analysisData, tone: passedTone = "casual", se
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mt-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 dark:text-zinc-100 tracking-[-0.02em] mb-2">{plan.product_summary}</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 dark:text-zinc-500">
-            <span className="font-semibold text-zinc-700 dark:text-zinc-300">Target ICP:</span> {plan.icp}
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-100 tracking-[-0.02em] mb-2">{plan.product_summary}</h1>
+          <p className="text-sm text-zinc-500">
+            <span className="font-semibold text-zinc-300">Target ICP:</span> {plan.icp}
           </p>
         </div>
         
@@ -391,18 +391,18 @@ export function OutreachPlanView({ analysisData, tone: passedTone = "casual", se
           <button 
             onClick={() => fetchPlan(true)}
             disabled={loading}
-            className="flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 text-xs font-semibold rounded-full transition disabled:opacity-50"
+            className="flex items-center justify-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-semibold rounded-full transition disabled:opacity-50"
           >
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
             {loading ? "Regenerating..." : "Regenerate Plan"}
           </button>
           
-          <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 px-3 py-1.5 rounded-full ring-1 ring-zinc-200 dark:ring-white/10 shadow-sm">
-            <SlidersHorizontal className="w-3 h-3 text-zinc-400 dark:text-zinc-500" />
+          <div className="flex items-center gap-2 bg-zinc-900 px-3 py-1.5 rounded-full ring-1 ring-white/10 shadow-sm">
+            <SlidersHorizontal className="w-3 h-3 text-zinc-500" />
             <select 
               value={tone}
               onChange={(e) => setTone(e.target.value)}
-              className="text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-transparent focus:outline-none"
+              className="text-xs font-bold text-zinc-300 bg-transparent focus:outline-none"
             >
               <option value="casual">Casual Tone</option>
               <option value="professional">Professional Tone</option>
@@ -413,37 +413,37 @@ export function OutreachPlanView({ analysisData, tone: passedTone = "casual", se
         </div>
       </div>
 
-      <hr className="border-t border-zinc-200 dark:border-white/10/50" />
+      <hr className="border-t border-white/5" />
 
       {/* Community Match Cards */}
       <section>
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-bold text-zinc-100 mb-4 flex items-center gap-2">
           🎯 Top Community Matches
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {plan.communities.map((c, idx) => (
-            <div key={idx} className="bg-white dark:bg-zinc-900 rounded-2xl p-4 sm:p-5 ring-1 ring-black/5 dark:ring-white/10 shadow-sm flex flex-col h-full">
+            <div key={idx} className="bg-zinc-900 rounded-2xl p-4 sm:p-5 ring-1 ring-white/10 shadow-sm flex flex-col h-full">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <a href={c.url} target="_blank" rel="noopener noreferrer" className="font-bold text-zinc-900 dark:text-zinc-100 hover:underline flex items-center gap-1 group">
+                  <a href={c.url} target="_blank" rel="noopener noreferrer" className="font-bold text-zinc-100 hover:underline flex items-center gap-1 group">
                     {c.name} <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition" />
                   </a>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-500 mt-0.5">{c.audience_size}</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">{c.audience_size}</p>
                 </div>
                 <CommunityBadge platform={c.platform} />
               </div>
               
               <div className="mb-4">
-                <div className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide mb-1">Fit Score</div>
+                <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wide mb-1">Fit Score</div>
                 <FitScoreBar score={c.fit_score} />
               </div>
               
               <div className="space-y-3 mt-auto">
-                <div className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed bg-zinc-50 dark:bg-zinc-800/50 p-3 rounded-lg ring-1 ring-zinc-100 dark:ring-white/5">
-                  <span className="font-semibold text-zinc-900 dark:text-zinc-100 text-xs uppercase block mb-1">Why</span>
+                <div className="text-sm text-zinc-300 leading-relaxed bg-zinc-800/50 p-3 rounded-lg ring-1 ring-white/5">
+                  <span className="font-semibold text-zinc-100 text-xs uppercase block mb-1">Why</span>
                   {c.fit_reason}
                 </div>
-                <div className="text-xs text-zinc-500 dark:text-zinc-400 dark:text-zinc-500 flex gap-2">
+                <div className="text-xs text-zinc-500 flex gap-2">
                   <span className="text-amber-500 font-bold shrink-0">⚠️ Rule</span>
                   <span className="italic">{c.rules_note}</span>
                 </div>
@@ -455,13 +455,13 @@ export function OutreachPlanView({ analysisData, tone: passedTone = "casual", se
 
       {/* Weekly Tracker */}
       <section>
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-4">📅 Weekly Rhythm</h2>
+        <h2 className="text-lg font-bold text-zinc-100 mb-4">📅 Weekly Rhythm</h2>
         <WeeklyTracker analysisId={analysisData.analysisId} tasks={plan.weekly_tasks} />
       </section>
 
       {/* Phased Timeline */}
       <section>
-        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-4">🚀 8-Week Execution Plan</h2>
+        <h2 className="text-lg font-bold text-zinc-100 mb-4">🚀 8-Week Execution Plan</h2>
         <div className="space-y-4">
           {plan.phases.map((phase, idx) => (
             <ExpandableSection 
@@ -471,15 +471,15 @@ export function OutreachPlanView({ analysisData, tone: passedTone = "casual", se
             >
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Goal</h4>
-                  <p className="text-sm text-zinc-800 dark:text-zinc-200 font-medium">{phase.goal}</p>
+                  <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Goal</h4>
+                  <p className="text-sm text-zinc-200 font-medium">{phase.goal}</p>
                 </div>
                 
                 <div>
-                  <h4 className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-2">Actions</h4>
+                  <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Actions</h4>
                   <ul className="space-y-2">
                     {phase.actions.map((action, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                      <li key={i} className="flex gap-2 text-sm text-zinc-300">
                         <span className="text-blue-500">•</span>
                         {action}
                       </li>
@@ -489,7 +489,7 @@ export function OutreachPlanView({ analysisData, tone: passedTone = "casual", se
                 
                 {phase.post_template && (
                   <div>
-                    <h4 className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-2">Ready-To-Post Template</h4>
+                    <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Ready-To-Post Template</h4>
                     <PostTemplateEditor template={phase.post_template} />
                   </div>
                 )}
@@ -500,13 +500,13 @@ export function OutreachPlanView({ analysisData, tone: passedTone = "casual", se
       </section>
 
       {/* Viral Angles Appendix */}
-      <section className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 rounded-2xl p-5 ring-1 ring-indigo-100 dark:ring-indigo-500/20">
-        <h2 className="text-sm font-bold text-indigo-900 dark:text-indigo-300 mb-3 flex items-center gap-2">
+      <section className="bg-gradient-to-br from-indigo-950/30 to-purple-950/30 rounded-2xl p-5 ring-1 ring-indigo-500/20">
+        <h2 className="text-sm font-bold text-indigo-300 mb-3 flex items-center gap-2">
           🌪️ Viral Angles
         </h2>
         <ul className="space-y-3">
           {plan.viral_angles.map((angle, idx) => (
-            <li key={idx} className="bg-white/80 dark:bg-zinc-900/80 rounded-xl p-3 text-sm font-medium text-indigo-950 dark:text-indigo-200 shadow-sm ring-1 ring-indigo-100/50 dark:ring-indigo-500/20">
+            <li key={idx} className="bg-zinc-900/80 rounded-xl p-3 text-sm font-medium text-indigo-200 shadow-sm ring-1 ring-indigo-500/20/50">
               {angle}
             </li>
           ))}
