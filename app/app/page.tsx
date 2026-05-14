@@ -2,6 +2,7 @@
 
 import { usePrivy, useToken, useWallets } from "@privy-io/react-auth";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { ChatContainer } from "@/components/ChatContainer";
 import { NewReportBanner } from "@/components/NewReportBanner";
 import { DailyReportModal } from "@/components/DailyReportModal";
@@ -23,6 +24,16 @@ export default function Home() {
   const { ready, authenticated, user, login, logout } = usePrivy();
   const { getAccessToken } = useToken();
   const { wallets } = useWallets();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (ready && authenticated) {
+      const isComplete = localStorage.getItem("cmo_onboarding_complete");
+      if (!isComplete) {
+        router.push("/onboarding");
+      }
+    }
+  }, [ready, authenticated, router]);
   const [hasNewReportBadge, setHasNewReportBadge] = useState(false);
   const [externalReport, setExternalReport] = useState<string | null>(null);
   const [dailyReportModal, setDailyReportModal] = useState<{ markdown: string; timestamp: string } | null>(null);

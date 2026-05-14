@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ParticleField } from "@/components/onboarding/ParticleField";
 import { ProfileStep } from "@/components/onboarding/ProfileStep";
 import { PlanStep } from "@/components/onboarding/PlanStep";
 import { WelcomeStep } from "@/components/onboarding/WelcomeStep";
@@ -60,8 +59,6 @@ export default function OnboardingPage() {
 
   return (
     <div className="relative min-h-screen bg-zinc-950 overflow-hidden">
-      {/* Particle background */}
-      <ParticleField />
 
       {/* Progress bar */}
       <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-white/[0.04]">
