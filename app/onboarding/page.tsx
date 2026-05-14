@@ -7,6 +7,7 @@ import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { ProfileStep } from "@/components/onboarding/ProfileStep";
 import { PlanStep } from "@/components/onboarding/PlanStep";
 import { WelcomeStep } from "@/components/onboarding/WelcomeStep";
+import { FundWalletModal } from "@/components/onboarding/FundWalletModal";
 
 type ProfileData = {
   name: string;
@@ -40,6 +41,8 @@ export default function OnboardingPage() {
     projectName: "",
   });
   const [selectedPlan, setSelectedPlan] = useState("payperuse");
+  const [fundModalOpen, setFundModalOpen] = useState(false);
+  const [requiredAmount, setRequiredAmount] = useState(0);
 
   const handleProfileChange = useCallback((field: string, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
@@ -47,6 +50,26 @@ export default function OnboardingPage() {
 
   const handlePlanSelect = useCallback((plan: string) => {
     setSelectedPlan(plan);
+    
+    const prices: Record<string, number> = {
+      weekly: 9,
+      monthly: 29,
+      yearly: 249,
+      payperuse: 0
+    };
+    
+    const required = prices[plan] || 0;
+    
+    if (required > 0 && wallets?.[0]?.address) {
+      setRequiredAmount(required);
+      setFundModalOpen(true);
+    } else {
+      setStep(2);
+    }
+  }, [wallets]);
+
+  const handleFundSuccess = useCallback(() => {
+    setFundModalOpen(false);
     setStep(2);
   }, []);
 
@@ -184,6 +207,14 @@ export default function OnboardingPage() {
           )}
         </AnimatePresence>
       </div>
+
+      <FundWalletModal
+        isOpen={fundModalOpen}
+        onClose={() => setFundModalOpen(false)}
+        onSuccess={handleFundSuccess}
+        address={wallets?.[0]?.address || ""}
+        requiredAmount={requiredAmount}
+      />
     </div>
   );
 }
