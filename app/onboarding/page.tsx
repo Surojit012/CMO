@@ -8,6 +8,8 @@ import { ProfileStep } from "@/components/onboarding/ProfileStep";
 import { PlanStep } from "@/components/onboarding/PlanStep";
 import { WelcomeStep } from "@/components/onboarding/WelcomeStep";
 import { FundWalletModal } from "@/components/onboarding/FundWalletModal";
+import { payForSubscription } from "@/lib/arc-payment";
+import { Loader2 } from "lucide-react";
 
 type ProfileData = {
   name: string;
@@ -43,10 +45,33 @@ export default function OnboardingPage() {
   const [selectedPlan, setSelectedPlan] = useState("payperuse");
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [requiredAmount, setRequiredAmount] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleProfileChange = useCallback((field: string, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
   }, []);
+
+  const processPaymentAndProceed = useCallback(async (plan: string, required: number) => {
+    if (!wallets?.[0]) return;
+    setIsProcessing(true);
+    try {
+      const provider = await wallets[0].getEthereumProvider();
+      const result = await payForSubscription(provider, wallets[0].address, required.toString());
+      if (result.success) {
+        setStep(2);
+      } else if (result.error === "insufficient_balance") {
+        setRequiredAmount(required);
+        setFundModalOpen(true);
+      } else {
+        alert("Payment failed: " + result.error);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("An unexpected error occurred during payment.");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [wallets]);
 
   const handlePlanSelect = useCallback((plan: string) => {
     setSelectedPlan(plan);
@@ -61,17 +86,17 @@ export default function OnboardingPage() {
     const required = prices[plan] || 0;
     
     if (required > 0 && wallets?.[0]?.address) {
-      setRequiredAmount(required);
-      setFundModalOpen(true);
+      processPaymentAndProceed(plan, required);
     } else {
       setStep(2);
     }
-  }, [wallets]);
+  }, [wallets, processPaymentAndProceed]);
 
   const handleFundSuccess = useCallback(() => {
     setFundModalOpen(false);
-    setStep(2);
-  }, []);
+    const prices: Record<string, number> = { weekly: 9, monthly: 29, yearly: 249, payperuse: 0 };
+    processPaymentAndProceed(selectedPlan, prices[selectedPlan] || 0);
+  }, [selectedPlan, processPaymentAndProceed]);
 
   const handleFinish = useCallback(async () => {
     // Save to local storage for quick checks
@@ -215,6 +240,13 @@ export default function OnboardingPage() {
         address={wallets?.[0]?.address || ""}
         requiredAmount={requiredAmount}
       />
+
+      {isProcessing && (
+        <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm">
+          <Loader2 className="w-10 h-10 animate-spin text-white mb-4" />
+          <p className="text-white font-medium">Processing payment...</p>
+        </div>
+      )}
     </div>
   );
 }

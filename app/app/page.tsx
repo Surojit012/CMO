@@ -7,6 +7,7 @@ import { ChatContainer } from "@/components/ChatContainer";
 import { NewReportBanner } from "@/components/NewReportBanner";
 import { DailyReportModal } from "@/components/DailyReportModal";
 import { ProfileSettingsModal } from "@/components/ProfileSettingsModal";
+import { ManagePlanModal } from "@/components/ManagePlanModal";
 import { Navbar } from "@/components/layout/Navbar";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { WalletPanel } from "@/components/WalletPanel";
@@ -64,6 +65,7 @@ export default function Home() {
   const [externalReport, setExternalReport] = useState<string | null>(null);
   const [dailyReportModal, setDailyReportModal] = useState<{ markdown: string; timestamp: string } | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"analysis" | "audit" | "outreach">("analysis");
 
@@ -247,6 +249,7 @@ export default function Home() {
           onAutonomousToggle={handleAutonomousToggle}
           autonomousUrl={autonomousUrl}
           onOpenProfile={() => setProfileModalOpen(true)}
+          onOpenPlans={() => setPlanModalOpen(true)}
         />
 
         {/* Main content — scrolls independently */}
@@ -283,6 +286,11 @@ export default function Home() {
       <ProfileSettingsModal
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
+      />
+
+      <ManagePlanModal
+        isOpen={planModalOpen}
+        onClose={() => setPlanModalOpen(false)}
       />
     </main>
   );

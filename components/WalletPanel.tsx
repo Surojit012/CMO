@@ -33,19 +33,38 @@ export function WalletPanel() {
   const [initialBalance, setInitialBalance] = useState<number | null>(null);
   const [fundedSuccess, setFundedSuccess] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [activePlan, setActivePlan] = useState<string>("payperuse");
 
   useEffect(() => {
     setMounted(true);
+    try {
+      const data = localStorage.getItem("cmo_onboarding_data");
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (parsed.plan) setActivePlan(parsed.plan);
+      }
+    } catch (e) {}
   }, []);
 
   const wallet = wallets?.[0];
   const address = wallet?.address;
   const walletReady = Boolean(address);
   const shortAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "No wallet";
-  // Used only for UI copy/disabled states.
-  const needsFunding = parseFloat(balance) < 5;
-  const statusLabel = freeAnalyses > 0 ? (freeAnalyses + " FREE TRIALS REMAINING") : "Pay  per analysis";
-  const statusDotClass = freeAnalyses > 0 ? "bg-green-500" : "bg-zinc-900";
+  const isSubscribed = ["weekly", "monthly", "yearly"].includes(activePlan);
+  const needsFunding = !isSubscribed && parseFloat(balance) < 5;
+
+  let statusLabel = "Pay per analysis";
+  let statusDotClass = "bg-zinc-900";
+  
+  if (isSubscribed) {
+    if (activePlan === "weekly") statusLabel = "Starter Plan Active";
+    if (activePlan === "monthly") statusLabel = "Growth Plan Active";
+    if (activePlan === "yearly") statusLabel = "Scale Plan Active";
+    statusDotClass = "bg-green-500";
+  } else if (freeAnalyses > 0) {
+    statusLabel = freeAnalyses + " FREE TRIALS REMAINING";
+    statusDotClass = "bg-green-500";
+  }
 
   async function refreshStats(manual = false, overrideBalance?: string, overrideFreeAnalyses?: number) {
     if (!address) return;
@@ -224,13 +243,13 @@ export function WalletPanel() {
           <span className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${statusDotClass}`} />
           <p className="text-sm font-semibold text-zinc-900">{statusLabel}</p>
         </div>
-        {freeAnalyses > 0 && (
+        {!isSubscribed && freeAnalyses > 0 && (
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
             {freeAnalyses} / {FREE_ANALYSIS_LIMIT} free
           </p>
         )}
       </div>
-      {freeAnalyses > 0 && (
+      {!isSubscribed && freeAnalyses > 0 && (
         <p className="mb-3 text-[11px] font-medium text-zinc-500">Trial never resets</p>
       )}
 
@@ -325,10 +344,10 @@ export function WalletPanel() {
           >
             <span className={`h-2.5 w-2.5 rounded-full ${statusDotClass}`} />
             <span className="font-semibold text-zinc-900 hidden md:inline">
-              {freeAnalyses > 0 ? `${freeAnalyses} free analyses left` : "$1.35 Analysis · $15 Audit"}
+              {isSubscribed ? "Subscription Active" : freeAnalyses > 0 ? `${freeAnalyses} free analyses left` : "$1.35 Analysis · $15 Audit"}
             </span>
             <span className="font-semibold text-zinc-900 md:hidden">
-              {freeAnalyses > 0 ? `${freeAnalyses} free` : "Wallet"}
+              {isSubscribed ? "Active" : freeAnalyses > 0 ? `${freeAnalyses} free` : "Wallet"}
             </span>
             <span className="flex items-center gap-1 text-zinc-500">
               {Number(balance).toFixed(2)} {balanceSymbol}
@@ -367,7 +386,7 @@ export function WalletPanel() {
         >
           <span className={`h-2 w-2 rounded-full ${statusDotClass}`} />
           Wallet
-          {freeAnalyses > 0 && <span className="text-[10px] text-zinc-500">{freeAnalyses} free</span>}
+          {!isSubscribed && freeAnalyses > 0 && <span className="text-[10px] text-zinc-500">{freeAnalyses} free</span>}
         </button>
       </div>
 

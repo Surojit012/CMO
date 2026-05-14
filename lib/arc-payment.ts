@@ -244,6 +244,27 @@ export async function checkAndPayIfNeeded(
     const cmoContract = new ethers.Contract(CMO_CONTRACT_ADDRESS!, CMO_ABI, signer);
     const usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
 
+    // 0. Check if user is on a subscription plan
+    if (typeof window !== "undefined") {
+      try {
+        const data = localStorage.getItem("cmo_onboarding_data");
+        if (data) {
+          const parsed = JSON.parse(data);
+          if (parsed.plan && ["weekly", "monthly", "yearly"].includes(parsed.plan)) {
+            console.log(`User is on ${parsed.plan} plan. Bypassing nanopayment.`);
+            return {
+              success: true,
+              paid: false,
+              remaining: 9999,
+              newBalance: await getWalletBalance(address)
+            };
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse plan data from localStorage", e);
+      }
+    }
+
     // 1. Check remaining free analyses
     const freeRemaining = await cmoContract.getRemainingFree(address);
     console.log("Free remaining:", freeRemaining.toString());
@@ -422,5 +443,51 @@ export async function checkAndPayForAudit(
       remaining: 0, 
       error: toUserFacingPaymentError(err) 
     };
+  }
+}
+
+export async function payForSubscription(
+  walletClient: any,
+  address: string,
+  amountInUSDC: string
+): Promise<{
+  success: boolean;
+  txHash?: string;
+  error?: string;
+}> {
+  try {
+    const provider = new ethers.BrowserProvider(walletClient);
+    const signer = await provider.getSigner();
+    const usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
+
+    const decimals: number = Number(await usdcContract.decimals());
+    const paymentAmount = ethers.parseUnits(amountInUSDC, decimals);
+
+    const balanceBefore: bigint = await usdcContract.balanceOf(address);
+    
+    if (balanceBefore < paymentAmount) {
+      return { success: false, error: "insufficient_balance" };
+    }
+
+    if (!SERVER_WALLET_ADDRESS) {
+      throw new Error("Server wallet address not configured");
+    }
+
+    console.log(`Transferring ${amountInUSDC} USDC for subscription to`, SERVER_WALLET_ADDRESS);
+    const { tx: paymentTx, receipt } = await sendTransactionWithRetry(
+      () => usdcContract.transfer(SERVER_WALLET_ADDRESS, paymentAmount),
+      "subscription-transfer"
+    );
+    const txHash = receipt?.hash || paymentTx.hash;
+
+    const newBalance = await getWalletBalance(address);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("refresh-wallet-stats", { detail: { newBalance, remaining: 0 } }));
+    }
+
+    return { success: true, txHash };
+  } catch (err: any) {
+    console.error("Subscription payment error:", err);
+    return { success: false, error: toUserFacingPaymentError(err) };
   }
 }

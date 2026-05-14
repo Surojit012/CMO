@@ -154,20 +154,6 @@ export function ProfileSettingsModal({ isOpen, onClose }: ProfileSettingsModalPr
               </div>
             </div>
           </div>
-          
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-zinc-400">Current Plan</label>
-            <select
-              value={plan}
-              onChange={(e) => setPlan(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 text-sm text-white outline-none focus:border-white/20 transition appearance-none"
-            >
-              <option value="weekly" className="bg-zinc-900 text-white">Starter ($9/week)</option>
-              <option value="monthly" className="bg-zinc-900 text-white">Growth ($29/month)</option>
-              <option value="yearly" className="bg-zinc-900 text-white">Scale ($249/year)</option>
-              <option value="payperuse" className="bg-zinc-900 text-white">Pay Per Use</option>
-            </select>
-          </div>
         </div>
 
         <div className="mt-8 flex justify-end gap-3">
