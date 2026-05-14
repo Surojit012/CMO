@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePrivy, useToken } from "@privy-io/react-auth";
-import { X, Loader2, Settings, ChevronUp, Bell, Download, Key, HelpCircle, BarChart3, Search, Radio } from "lucide-react";
+import { X, Loader2, Settings, ChevronUp, Bell, Download, Key, HelpCircle, BarChart3, Search, Radio, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { HistorySession, SavedReport } from "@/components/HistorySidebar";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
@@ -32,6 +32,7 @@ type SidebarProps = {
   autonomousLoading: boolean;
   onAutonomousToggle: () => void;
   autonomousUrl: string;
+  onOpenProfile: () => void;
 };
 
 function extractDomain(url: string): string {
@@ -68,6 +69,7 @@ export function Sidebar({
   autonomousLoading,
   onAutonomousToggle,
   autonomousUrl,
+  onOpenProfile,
 }: SidebarProps) {
   const { user } = usePrivy();
   const { getAccessToken } = useToken();
@@ -277,6 +279,12 @@ export function Sidebar({
                 <button className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium transition" style={{ color: "var(--color-secondary)" }}>
                   <Download className="w-3.5 h-3.5" style={{ color: "var(--color-muted)" }} />
                   Export all reports
+                </button>
+
+                {/* Profile */}
+                <button onClick={() => { setSettingsOpen(false); onClose(); onOpenProfile(); }} className="w-full flex items-center gap-2 rounded-lg px-3 py-2.5 text-[11px] font-medium transition" style={{ color: "var(--color-secondary)" }}>
+                  <User className="w-3.5 h-3.5" style={{ color: "var(--color-muted)" }} />
+                  Edit Profile
                 </button>
 
                 {/* API key */}
