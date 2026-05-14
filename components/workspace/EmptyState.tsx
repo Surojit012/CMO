@@ -27,6 +27,7 @@ type EmptyStateProps = {
   /* Agent selector */
   selectedAgents: string[];
   onAgentSelectionChange: (agents: string[]) => void;
+  activePlan: string;
 };
 
 export function EmptyState({
@@ -52,6 +53,7 @@ export function EmptyState({
   freeRemaining,
   selectedAgents,
   onAgentSelectionChange,
+  activePlan,
 }: EmptyStateProps) {
   const price = getAgentPrice(selectedAgents);
 
@@ -67,8 +69,14 @@ export function EmptyState({
 
   // Build dynamic CTA label
   let ctaLabel = buttonLabel;
-  if (activeTab === "analysis" && !compareMode && showPaymentUpsell && hasSufficientBalance) {
-    ctaLabel = `Analyze — ${price.toFixed(2)} USDC`;
+  const isSubscribed = ["weekly", "monthly", "yearly"].includes(activePlan);
+
+  if (activeTab === "analysis" && !compareMode && showPaymentUpsell) {
+    if (isSubscribed) {
+      ctaLabel = "Analyze (Included)";
+    } else if (hasSufficientBalance) {
+      ctaLabel = `Analyze — ${price.toFixed(2)} USDC`;
+    }
   }
 
   return (
@@ -140,6 +148,7 @@ export function EmptyState({
               <AgentSelector
                 selectedAgents={selectedAgents}
                 onSelectionChange={onAgentSelectionChange}
+                activePlan={activePlan}
               />
             </div>
           )}

@@ -108,6 +108,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
   const [autonomousEnabled, setAutonomousEnabled] = useState(false);
   const [autonomousLoading, setAutonomousLoading] = useState(false);
   const [warRoomElapsed, setWarRoomElapsed] = useState(0);
+  const [activePlan, setActivePlan] = useState<string>("payperuse");
 
   const viewportRef = useRef<HTMLDivElement>(null);
   const loadingIntervalRef = useRef<number | null>(null);
@@ -130,6 +131,27 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
       setOnboardingStep("input");
     }
   }, [messages.length, currentStep, activeTab]);
+
+  useEffect(() => {
+    const fetchPlan = () => {
+      try {
+        const rawData = localStorage.getItem("cmo_onboarding_data");
+        if (rawData) {
+          const parsed = JSON.parse(rawData);
+          if (parsed.plan) {
+            setActivePlan(parsed.plan);
+            if (parsed.plan === "weekly") {
+              setSelectedAgents(["strategist", "copywriter", "seo"]);
+            }
+          }
+        }
+      } catch(e) {}
+    };
+
+    fetchPlan();
+    window.addEventListener("refresh-wallet-stats", fetchPlan);
+    return () => window.removeEventListener("refresh-wallet-stats", fetchPlan);
+  }, []);
 
   async function refreshWalletState(address: string) {
     const [freeResult, balanceResult] = await Promise.allSettled([
@@ -1023,6 +1045,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
                   freeRemaining={freeRemaining}
                   selectedAgents={selectedAgents}
                   onAgentSelectionChange={setSelectedAgents}
+                  activePlan={activePlan}
                 />
               )}
 
@@ -1099,6 +1122,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
                   freeRemaining={freeRemaining}
                   selectedAgents={selectedAgents}
                   onAgentSelectionChange={setSelectedAgents}
+                  activePlan={activePlan}
                 />
               )}
 
