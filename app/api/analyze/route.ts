@@ -6,7 +6,8 @@ import { getMemoryContext, storeAnalysis } from "@/lib/memory";
 import { getPrivyUserIdFromRequest } from "@/lib/privy-auth";
 import { fetchWebsiteContent } from "@/lib/scraper";
 import { supabaseServer } from "@/lib/supabase";
-import type { AnalyzeErrorResponse, AnalyzeRequest, AnalyzeSuccessResponse } from "@/lib/types";
+import type { AnalyzeErrorResponse, AnalyzeRequest, AnalyzeSuccessResponse, ReportType } from "@/lib/types";
+import { REPORT_AGENT_MAP } from "@/lib/types";
 import { parseAndValidateUrl } from "@/lib/url";
 
 export const maxDuration = 60;
@@ -43,12 +44,17 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json()) as Partial<AnalyzeRequest>;
   const rawUrl = body.url?.trim();
+  const reportType = body.reportType as ReportType | undefined;
+  const competitorUrlRaw = body.competitorUrl?.trim();
   
-  const VALID_AGENTS = ['strategist', 'copywriter', 'seo', 'conversion', 'distribution', 'reddit', 'critic', 'aggregator'];
+  const VALID_AGENTS = ['strategist', 'copywriter', 'seo', 'conversion', 'distribution', 'reddit', 'critic', 'aggregator', 'narrative', 'positioning', 'competitor', 'sentiment'];
   let selectedAgents = body.selectedAgents;
   
-  if (!Array.isArray(selectedAgents) || selectedAgents.length === 0) {
-    selectedAgents = [...VALID_AGENTS];
+  // If a report type is specified, use its agent map as default
+  if (reportType && REPORT_AGENT_MAP[reportType]) {
+    selectedAgents = REPORT_AGENT_MAP[reportType];
+  } else if (!Array.isArray(selectedAgents) || selectedAgents.length === 0) {
+    selectedAgents = ['strategist', 'copywriter', 'seo', 'conversion', 'distribution', 'reddit', 'critic', 'aggregator'];
   } else {
     // Filter out any invalid strings and ensure at least 1 valid agent remains
     selectedAgents = selectedAgents.filter(a => VALID_AGENTS.includes(a));
@@ -67,6 +73,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Validate competitor URL if Battle Card report type
+  if (reportType === "competitor-battle-card" && !competitorUrlRaw) {
+    return NextResponse.json<AnalyzeErrorResponse>(
+      { error: "A competitor URL is required for Battle Card reports." },
+      { status: 400 }
+    );
+  }
+
   let url: URL;
 
   try {
@@ -77,13 +91,31 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Scrape primary URL
     const extracted = await fetchWebsiteContent(url.toString());
     const memory = await getMemoryContext(url.toString(), url.hostname);
     const analysisId = crypto.randomUUID();
 
+    // Scrape competitor URL for battle card reports
+    let competitorContent: string | undefined;
+    if (competitorUrlRaw && reportType === "competitor-battle-card") {
+      try {
+        const competitorUrl = parseAndValidateUrl(competitorUrlRaw);
+        const competitorExtracted = await fetchWebsiteContent(competitorUrl.toString());
+        competitorContent = [
+          `Website URL: ${competitorUrl.toString()}`,
+          `Title: ${competitorExtracted.title || "N/A"}`,
+          `Meta description: ${competitorExtracted.metaDescription || "N/A"}`,
+          `Extracted visible text:`,
+          competitorExtracted.visibleText || "N/A"
+        ].join("\n\n");
+      } catch (err) {
+        console.warn("Failed to scrape competitor URL:", err);
+        competitorContent = `Competitor URL: ${competitorUrlRaw} (scrape failed)`;
+      }
+    }
+
     // Extract user wallet address for Arc nanopayment job descriptions
-    // Privy user IDs follow the format "did:privy:<id>" — the actual wallet
-    // address comes from the request body or header if available
     const userWalletAddress = req.headers.get("x-user-wallet-address") || undefined;
 
     const { markdown, analysis, agents, arcReceipt } = await generateGrowthAnalysis(
@@ -91,7 +123,9 @@ export async function POST(req: NextRequest) {
       memory,
       undefined,       // onEvent — not used in API route (no SSE)
       userWalletAddress,
-      selectedAgents
+      selectedAgents,
+      reportType,
+      competitorContent
     );
 
     await storeAnalysis({
@@ -117,7 +151,9 @@ export async function POST(req: NextRequest) {
       agents,
       extracted,
       arcReceipt,
-      selectedAgents
+      selectedAgents,
+      reportType,
+      competitorUrl: competitorUrlRaw,
     };
 
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {

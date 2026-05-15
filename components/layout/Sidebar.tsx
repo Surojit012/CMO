@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { usePrivy, useToken } from "@privy-io/react-auth";
-import { X, Loader2, Settings, ChevronUp, Bell, Download, Key, HelpCircle, BarChart3, Search, Radio, User, CreditCard } from "lucide-react";
+import { X, Loader2, Settings, ChevronUp, Bell, Download, Key, HelpCircle, Shield, Swords, Heart, Rocket, Zap, User, CreditCard } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { HistorySession, SavedReport } from "@/components/HistorySidebar";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import type { ReportType } from "@/lib/types";
+import { REPORT_TYPE_PRICES } from "@/lib/types";
 
 function relativeTime(dateStr: string): string {
   const ms = Date.now() - new Date(dateStr).getTime();
@@ -19,11 +21,9 @@ function relativeTime(dateStr: string): string {
   return `${Math.floor(days / 7)}w ago`;
 }
 
-type ActiveTab = "analysis" | "audit" | "outreach";
-
 type SidebarProps = {
-  activeTab: ActiveTab;
-  onTabChange: (tab: ActiveTab) => void;
+  activeTab: ReportType;
+  onTabChange: (tab: ReportType) => void;
   onSessionSelect: (session: HistorySession, specificAnalysis?: SavedReport) => void;
   activeSessionId?: string;
   isOpen: boolean;
@@ -44,18 +44,25 @@ function extractDomain(url: string): string {
   }
 }
 
-const MODE_ITEMS: { key: ActiveTab; label: string; Icon: LucideIcon }[] = [
-  { key: "analysis", label: "Growth Analysis", Icon: BarChart3 },
-  { key: "audit",    label: "Market Audit",    Icon: Search },
-  { key: "outreach", label: "Outreach Engine", Icon: Radio },
+const MODE_ITEMS: { key: ReportType; label: string; Icon: LucideIcon; price: string }[] = [
+  { key: "token-narrative",         label: "Narrative Audit",  Icon: Shield,  price: REPORT_TYPE_PRICES["token-narrative"] },
+  { key: "competitor-battle-card",  label: "Battle Card",      Icon: Swords,  price: REPORT_TYPE_PRICES["competitor-battle-card"] },
+  { key: "community-health",        label: "Community Health", Icon: Heart,   price: REPORT_TYPE_PRICES["community-health"] },
+  { key: "launch-readiness",        label: "Launch Readiness", Icon: Rocket,  price: REPORT_TYPE_PRICES["launch-readiness"] },
+  { key: "weekly-pulse",            label: "Weekly Pulse",     Icon: Zap,     price: REPORT_TYPE_PRICES["weekly-pulse"] },
 ];
 
 function getTypeLabel(type: string) {
   switch (type) {
-    case "analysis": return "Growth";
-    case "audit":    return "Audit";
-    case "outreach": return "Outreach";
-    default:         return "Report";
+    case "token-narrative":        return "Narrative";
+    case "competitor-battle-card": return "Battle";
+    case "community-health":       return "Community";
+    case "launch-readiness":       return "Launch";
+    case "weekly-pulse":           return "Pulse";
+    case "analysis":               return "Growth";
+    case "audit":                  return "Audit";
+    case "outreach":               return "Outreach";
+    default:                       return "Report";
   }
 }
 
@@ -162,7 +169,12 @@ export function Sidebar({
               }`}
             >
               <item.Icon className="w-4 h-4 shrink-0" />
-              {item.label}
+              <span className="flex-1 text-left">{item.label}</span>
+              <span className={`text-[10px] font-mono ${
+                activeTab === item.key ? "text-black/50" : "text-zinc-600"
+              }`}>
+                ${item.price}
+              </span>
             </button>
           ))}
         </div>

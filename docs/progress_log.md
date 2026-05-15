@@ -35,10 +35,24 @@
 - **Native Light/Dark Mode:** Eradicated legacy `.dark-override` CSS hacks. Re-architected `OutreachPlanView` and UI reports to natively respect standard tailwind tokens (`bg-zinc-900`, `text-zinc-100`) for seamless Light/Dark mode transitions.
 - **Autonomous Precision:** Refactored the `Autonomous` global toggle to be project-specific. Fixed a silent payload bug where the frontend sent `url` instead of `websiteUrl`.
 
+## Phase 8: Crypto-Native Intelligence Pivot
+- **5 Report Types:** Replaced 3 generic tabs (Growth Analysis, Market Audit, Outreach Engine) with 5 crypto-native report types: Token Narrative Audit ($2), Competitor Battle Card ($3), Community Health Check ($1.50), Launch Readiness Report ($5), Weekly Pulse ($0.50).
+- **4 New Agents:** Created `narrativeAgent.ts` (crypto-native narrative analyst), `positioningAgent.ts` (protocol positioning specialist), `competitorIntelligenceAgent.ts` (head-to-head battle analyst), `communitySentimentAgent.ts` (community pulse analyst using Groq for speed).
+- **Agent Router:** Built `runAgentsForReport()` in `agents/index.ts` — routes to correct agent combination per report type with sequential/parallel orchestration patterns.
+- **Pipeline Extension:** Updated `generateGrowthAnalysis()` to accept `reportType` and `competitorContent`. Falls back to legacy 6-agent pipeline when no reportType specified.
+- **API Routing:** `/api/analyze` now accepts `reportType` and `competitorUrl`. Battle Card auto-scrapes competitor site. Agent selection auto-derived from `REPORT_AGENT_MAP`.
+- **Nanopayment Pricing:** Updated ERC-8183 settlement with 4 new agent prices (narrative: 0.30, positioning: 0.25, competitor: 0.40, sentiment: 0.20 USDC).
+- **Sidebar Overhaul:** 5 report type pills with icons (Shield, Swords, Heart, Rocket, Zap) and USDC price tooltips.
+- **EmptyState:** Per-report hero, subtitle, placeholder, and price badge. Battle Card shows dual URL input automatically.
+- **Backward Compatibility:** Legacy agents/types preserved. `SpecializedAgentOutputs` now `Record<string, string>` for flexibility. ChatContainer uses `getRenderMode()` bridge.
+
 ## Current State
-CMO is a fully functional, multi-agent AI growth system with autonomous daily monitoring, integrated content distribution, and **Web3-native monetization**.
-- All 5 base agents + 1 specialized Reddit agent are live.
-- Parallel processing and AI routing (Fireworks/Groq) are enabled.
+CMO is a **crypto-native protocol intelligence platform** with 5 specialized report types, 10 AI agents (6 legacy + 4 crypto-native), and ERC-8183 on-chain settlement via Arc Testnet.
+- **Token Narrative Audit:** Narrative + Positioning + Copywriter (3 agents, $2 USDC)
+- **Competitor Battle Card:** Competitor + SEO + Positioning (3 agents, $3 USDC, dual URL)
+- **Community Health Check:** Reddit + Sentiment + Distribution (3 agents, $1.50 USDC)
+- **Launch Readiness Report:** All 7 agents ($5 USDC, comprehensive pre-launch audit)
+- **Weekly Pulse:** Reddit + Sentiment + Competitor lightweight (3 agents, $0.50 USDC)
+- Wallet-bound quotas, subscription enforcement, and USDC micropayments via Arc Testnet are active.
 - Daily autonomous mode is strictly project-specific and successfully deployed.
 - One-click publishing to Dev.to and Hashnode is live.
-- Wallet-bound quotas, subscription enforcement, and USDC micropayments via Arc Testnet are active.

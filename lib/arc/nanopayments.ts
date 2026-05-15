@@ -32,6 +32,7 @@ const USDC_ADDRESS =
 
 /** Agent pricing in USDC (6 decimals) */
 export const AGENT_PRICES: Record<string, string> = {
+  // Legacy agents
   strategist: "0.20",
   copywriter: "0.20",
   seo: "0.20",
@@ -40,9 +41,14 @@ export const AGENT_PRICES: Record<string, string> = {
   reddit: "0.15",
   critic: "0.10",
   aggregator: "0.10",
+  // Crypto-native agents
+  narrative: "0.30",
+  positioning: "0.25",
+  competitor: "0.40",
+  sentiment: "0.20",
 };
 
-const ALL_AGENTS = ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit", "critic", "aggregator"] as const;
+const ALL_AGENTS = ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit", "critic", "aggregator", "narrative", "positioning", "competitor", "sentiment"] as const;
 
 // ─── ABI ─────────────────────────────────────────────────────────────────────
 

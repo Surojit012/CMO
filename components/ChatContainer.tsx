@@ -59,8 +59,8 @@ type ChatContainerProps = {
   userId: string;
   externalReport?: string | null;
   onReportLoaded?: () => void;
-  activeTab: "analysis" | "audit" | "outreach";
-  onTabChange: (tab: "analysis" | "audit" | "outreach") => void;
+  activeTab: import("@/lib/types").ReportType;
+  onTabChange: (tab: import("@/lib/types").ReportType) => void;
   isHistoryOpen: boolean;
   onHistoryClose: () => void;
 };
@@ -79,6 +79,22 @@ async function buildPrivyHeaders(getAccessToken: () => Promise<string | null>, s
   return headers;
 }
 
+/**
+ * Maps crypto-native ReportType to legacy rendering bucket.
+ * All new report types use the 'analysis' rendering path (ReportGrid).
+ * This avoids rewriting the entire ChatContainer while maintaining backward compat.
+ */
+function getRenderMode(tab: import("@/lib/types").ReportType): "analysis" | "audit" | "outreach" {
+  switch (tab) {
+    case "competitor-battle-card": return "analysis"; // Battle cards render via ReportGrid
+    case "community-health":      return "analysis"; // Community health → analysis flow
+    case "launch-readiness":      return "analysis";
+    case "weekly-pulse":          return "analysis";
+    case "token-narrative":       return "analysis";
+    default:                      return "analysis";
+  }
+}
+
 export function ChatContainer({ userId, externalReport, onReportLoaded, activeTab, onTabChange, isHistoryOpen, onHistoryClose }: ChatContainerProps) {
   const { user, authenticated } = usePrivy();
   const { getAccessToken } = useToken();
@@ -86,9 +102,10 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
   const { createWallet } = useCreateWallet();
   
   const setActiveTab = onTabChange;
+  const renderMode = getRenderMode(activeTab);
   const [analysisMessages, setAnalysisMessages] = useState<Message[]>([]);
   const [auditMessages, setAuditMessages] = useState<Message[]>([]);
-  const messages = activeTab === "analysis" ? analysisMessages : auditMessages;
+  const messages = renderMode === "analysis" ? analysisMessages : auditMessages;
   const [outreachContext, setOutreachContext] = useState<AnalyzeSuccessResponse | null>(null);
   const [currentStep, setCurrentStep] = useState<(typeof loadingSteps)[number] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +135,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
 
   // Derive onboarding step
   useEffect(() => {
-    if (activeTab !== "analysis" && activeTab !== "audit") {
+    if (renderMode !== "analysis" && renderMode !== "audit") {
       setOnboardingStep(null);
       return;
     }
@@ -239,7 +256,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
 
   useEffect(() => {
     if (externalReport) {
-      if (activeTab === "audit") {
+      if (renderMode === "audit") {
         try {
           const auditData = JSON.parse(externalReport);
           setAuditMessages([
@@ -253,7 +270,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
         } catch (e) {
           console.error("Failed to parse audit history", e);
         }
-      } else if (activeTab === "outreach") {
+      } else if (renderMode === "outreach") {
         try {
           const planData = JSON.parse(externalReport);
           // For outreach history, we set the context to a mock AnalyzeSuccessResponse 
@@ -334,7 +351,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
         extracted: { title: "", metaDescription: "", visibleText: "" }
       };
       setOutreachContext(successResponse);
-      setActiveTab("outreach");
+      setActiveTab("community-health" as import("@/lib/types").ReportType);
     }
   }
 
@@ -400,7 +417,13 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
       else if (activeOutreachSet) nextTab = "outreach";
     }
 
-    setActiveTab(nextTab);
+    // Map legacy tab strings to ReportType
+    const TAB_MAP: Record<string, import("@/lib/types").ReportType> = {
+      "analysis": "token-narrative",
+      "audit": "competitor-battle-card",
+      "outreach": "community-health",
+    };
+    setActiveTab(TAB_MAP[nextTab] || nextTab as import("@/lib/types").ReportType);
   }
 
   async function handleCompareSubmit() {
@@ -511,12 +534,13 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
     setError(null);
     setComparisonResult(null);
     const targetTab = activeTab;
+    const targetRenderMode = getRenderMode(targetTab);
     const updateTargetMessages = (updater: (curr: Message[]) => Message[]) => {
-      if (targetTab === "analysis") setAnalysisMessages(updater);
+      if (targetRenderMode === "analysis") setAnalysisMessages(updater);
       else setAuditMessages(updater);
     };
 
-    if (targetTab === "audit") {
+    if (targetRenderMode === "audit") {
       setError(null);
 
       const wallet = wallets?.[0];
@@ -665,7 +689,9 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
         signal: requestControllerRef.current.signal,
         body: JSON.stringify({
           url: normalizedUrl,
-          selectedAgents
+          selectedAgents,
+          reportType: activeTab,
+          competitorUrl: compareUrl || undefined,
         })
       });
 
@@ -932,16 +958,16 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
     })();
   }, [authenticated, user?.id]);
 
-  const isNeedsPayment = activeTab === "analysis" ? freeRemaining === 0 : true;
+  const isNeedsPayment = renderMode === "analysis" ? freeRemaining === 0 : true;
   const showPaymentUpsell = isNeedsPayment;
   const dynamicAgentPrice = getAgentPrice(selectedAgents);
   const comparePrice = dynamicAgentPrice * 2;
-  const singlePrice = activeTab === "analysis" ? dynamicAgentPrice : 15;
+  const singlePrice = renderMode === "analysis" ? dynamicAgentPrice : 15;
   const requiredBalance = compareMode ? comparePrice : singlePrice;
   const hasSufficientBalance = parseFloat(usdcBalance) >= requiredBalance;
 
   let buttonLabel = "";
-  if (activeTab === "analysis" && compareMode) {
+  if (renderMode === "analysis" && compareMode) {
     if (showPaymentUpsell) {
       if (isFundingSetup) buttonLabel = "Preparing Wallet...";
       else if (hasSufficientBalance) buttonLabel = `Pay $${comparePrice.toFixed(2)} & Compare`;
@@ -949,7 +975,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
     } else {
       buttonLabel = "Compare Both Sites →";
     }
-  } else if (activeTab === "analysis") {
+  } else if (renderMode === "analysis") {
     if (showPaymentUpsell) {
       if (isFundingSetup) buttonLabel = "Preparing Wallet...";
       else if (hasSufficientBalance) buttonLabel = `Pay $${singlePrice.toFixed(2)} & Analyze`;
@@ -1018,12 +1044,12 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
           )}
 
           {/* === ANALYSIS TAB === */}
-          {activeTab === "analysis" && (
+          {renderMode === "analysis" && (
             <>
               {/* Empty state: no messages, not loading */}
               {!hasMessages && !comparisonResult && (
                 <EmptyState
-                  activeTab="analysis"
+                  activeTab={activeTab}
                   compareMode={compareMode}
                   onCompareModeChange={(mode) => { setCompareMode(mode); setComparisonResult(null); }}
                   inputValue={inputValue}
@@ -1095,12 +1121,12 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
           )}
 
           {/* === AUDIT TAB === */}
-          {activeTab === "audit" && (
+          {renderMode === "audit" && (
             <>
               {/* Empty state for audit */}
               {!hasMessages && !currentStep && (
                 <EmptyState
-                  activeTab="audit"
+                  activeTab={activeTab}
                   compareMode={false}
                   onCompareModeChange={() => {}}
                   inputValue={inputValue}
@@ -1145,11 +1171,11 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
           )}
 
           {/* === OUTREACH TAB === */}
-          {activeTab === "outreach" && (
+          {renderMode === "outreach" && (
             <OutreachView
               context={outreachContext}
               sessionId={sessionId}
-              onSwitchToAnalysis={() => setActiveTab("analysis")}
+              onSwitchToAnalysis={() => setActiveTab("token-narrative" as import("@/lib/types").ReportType)}
             />
           )}
 

@@ -1,8 +1,13 @@
 import { callFireworks } from "@/lib/ai-router";
 import { redditAgent } from "./redditAgent";
+import { narrativeAgent } from "./narrativeAgent";
+import { positioningAgent } from "./positioningAgent";
+import { competitorIntelligenceAgent } from "./competitorIntelligenceAgent";
+import { communitySentimentAgent } from "./communitySentimentAgent";
 import { loadSkillPrompt } from "./loadSkill";
 import type { AgentEventCallback } from "@/lib/agent-events";
 import { withAgentEvent } from "@/lib/agent-events";
+import type { ReportType } from "@/lib/types";
 
 export type SpecializedAgentName =
   | "strategist"
@@ -10,9 +15,13 @@ export type SpecializedAgentName =
   | "seo"
   | "conversion"
   | "distribution"
-  | "reddit";
+  | "reddit"
+  | "narrative"
+  | "positioning"
+  | "competitor"
+  | "sentiment";
 
-export type SpecializedAgentOutputs = Record<SpecializedAgentName, string>;
+export type SpecializedAgentOutputs = Record<string, string>;
 
 const AGENT_MAX_TOKENS = 800;
 const AGENT_TEMPERATURE = 0.7;
@@ -376,4 +385,234 @@ export async function runAllAgents(
   };
 }
 
+/* ─────────────────────────────────────────────────────────
+ * Crypto-Native Report Pipeline
+ * ─────────────────────────────────────────────────────────
+ * Routes to the correct agent combination based on reportType.
+ * Falls back to the legacy runAllAgents for backward compat.
+ * ──────────────────────────────────────────────────────── */
+export async function runAgentsForReport(
+  reportType: ReportType,
+  websiteContent: string,
+  onEvent?: AgentEventCallback,
+  selectedAgents?: string[],
+  competitorContent?: string
+): Promise<SpecializedAgentOutputs> {
+  const outputs: Record<string, string> = {};
+  const isSelected = (agent: string) =>
+    !selectedAgents || selectedAgents.includes(agent);
 
+  // Extract product info for Reddit agent
+  const productInfo = await withAgentEvent(
+    "system",
+    "Extracting product identity…",
+    "Product identified.",
+    () => extractProductInfo(websiteContent),
+    onEvent
+  );
+
+  switch (reportType) {
+    case "token-narrative": {
+      // Sequential: Narrative first → then Positioning + Copywriter in parallel
+      if (isSelected("narrative")) {
+        outputs.narrative = await withAgentEvent(
+          "narrative" as any,
+          "Analyzing protocol narrative and story clarity…",
+          "Narrative audit complete.",
+          () => narrativeAgent(websiteContent),
+          onEvent
+        );
+      }
+
+      const parallel = await Promise.all([
+        isSelected("positioning")
+          ? withAgentEvent(
+              "positioning" as any,
+              "Evaluating protocol positioning and category ownership…",
+              "Positioning analysis complete.",
+              () => positioningAgent(websiteContent),
+              onEvent
+            )
+          : Promise.resolve("Positioning Agent skipped."),
+        isSelected("copywriter")
+          ? withAgentEvent(
+              "copywriter",
+              "Crafting crypto-native copy rewrites…",
+              "Copy analysis complete.",
+              () => runCopywriterAgent(websiteContent, outputs.narrative),
+              onEvent
+            )
+          : Promise.resolve("Copywriter Agent skipped."),
+      ]);
+      outputs.positioning = parallel[0];
+      outputs.copywriter = parallel[1];
+      break;
+    }
+
+    case "competitor-battle-card": {
+      if (!competitorContent) {
+        throw new Error("Competitor URL content is required for Battle Card report.");
+      }
+
+      // Run competitor + SEO + positioning in parallel
+      const [competitor, seo, positioning] = await Promise.all([
+        isSelected("competitor")
+          ? withAgentEvent(
+              "competitor" as any,
+              "Running head-to-head competitor intelligence…",
+              "Competitor analysis complete.",
+              () => competitorIntelligenceAgent(websiteContent, competitorContent),
+              onEvent
+            )
+          : Promise.resolve("Competitor Agent skipped."),
+        isSelected("seo")
+          ? withAgentEvent(
+              "seo",
+              "Analyzing SEO gaps and discoverability…",
+              "SEO analysis complete.",
+              () => runSeoAgent(websiteContent),
+              onEvent
+            )
+          : Promise.resolve("SEO Agent skipped."),
+        isSelected("positioning")
+          ? withAgentEvent(
+              "positioning" as any,
+              "Scoring positioning differentiation…",
+              "Positioning complete.",
+              () => positioningAgent(websiteContent, competitorContent),
+              onEvent
+            )
+          : Promise.resolve("Positioning Agent skipped."),
+      ]);
+      outputs.competitor = competitor;
+      outputs.seo = seo;
+      outputs.positioning = positioning;
+      break;
+    }
+
+    case "community-health": {
+      // Reddit first (provides data for sentiment), then sentiment + distribution in parallel
+      if (isSelected("reddit")) {
+        outputs.reddit = await withAgentEvent(
+          "reddit",
+          "Scanning Reddit for community discussions…",
+          "Reddit scan complete.",
+          () => redditAgent(productInfo.name || "this protocol", productInfo.description || "a crypto protocol"),
+          onEvent
+        );
+      }
+
+      const [sentiment, distribution] = await Promise.all([
+        isSelected("sentiment")
+          ? withAgentEvent(
+              "sentiment" as any,
+              "Analyzing community sentiment and health…",
+              "Sentiment analysis complete.",
+              () => communitySentimentAgent(outputs.reddit || "No Reddit data available."),
+              onEvent
+            )
+          : Promise.resolve("Sentiment Agent skipped."),
+        isSelected("distribution")
+          ? withAgentEvent(
+              "distribution",
+              "Mapping crypto community distribution channels…",
+              "Distribution plan mapped.",
+              () => runDistributionAgent(websiteContent),
+              onEvent
+            )
+          : Promise.resolve("Distribution Agent skipped."),
+      ]);
+      outputs.sentiment = sentiment;
+      outputs.distribution = distribution;
+      break;
+    }
+
+    case "launch-readiness": {
+      // All agents — Narrative first, then everything else in parallel
+      if (isSelected("narrative")) {
+        outputs.narrative = await withAgentEvent(
+          "narrative" as any,
+          "Analyzing protocol narrative for launch readiness…",
+          "Narrative audit complete.",
+          () => narrativeAgent(websiteContent),
+          onEvent
+        );
+      }
+
+      // Reddit next (provides data for sentiment)
+      if (isSelected("reddit")) {
+        outputs.reddit = await withAgentEvent(
+          "reddit",
+          "Scanning Reddit for community sentiment…",
+          "Reddit scan complete.",
+          () => redditAgent(productInfo.name || "this protocol", productInfo.description || "a crypto protocol"),
+          onEvent
+        );
+      }
+
+      // Remaining agents in parallel
+      const [positioning, competitor, sentiment, seo, copywriter] = await Promise.all([
+        isSelected("positioning")
+          ? withAgentEvent("positioning" as any, "Evaluating positioning…", "Positioning done.", () => positioningAgent(websiteContent), onEvent)
+          : Promise.resolve("Positioning skipped."),
+        isSelected("competitor") && competitorContent
+          ? withAgentEvent("competitor" as any, "Scanning competitor…", "Competitor done.", () => competitorIntelligenceAgent(websiteContent, competitorContent), onEvent)
+          : Promise.resolve("Competitor scan skipped (no competitor URL)."),
+        isSelected("sentiment")
+          ? withAgentEvent("sentiment" as any, "Analyzing sentiment…", "Sentiment done.", () => communitySentimentAgent(outputs.reddit || "No Reddit data."), onEvent)
+          : Promise.resolve("Sentiment skipped."),
+        isSelected("seo")
+          ? withAgentEvent("seo", "Running SEO audit…", "SEO done.", () => runSeoAgent(websiteContent), onEvent)
+          : Promise.resolve("SEO skipped."),
+        isSelected("copywriter")
+          ? withAgentEvent("copywriter", "Crafting copy…", "Copy done.", () => runCopywriterAgent(websiteContent, outputs.narrative), onEvent)
+          : Promise.resolve("Copywriter skipped."),
+      ]);
+      outputs.positioning = positioning;
+      outputs.competitor = competitor;
+      outputs.sentiment = sentiment;
+      outputs.seo = seo;
+      outputs.copywriter = copywriter;
+      break;
+    }
+
+    case "weekly-pulse": {
+      // Lightweight versions — Reddit first, then sentiment + competitor in parallel
+      if (isSelected("reddit")) {
+        outputs.reddit = await withAgentEvent(
+          "reddit",
+          "Quick-scanning Reddit for weekly pulse…",
+          "Reddit pulse captured.",
+          () => redditAgent(productInfo.name || "this protocol", productInfo.description || "a crypto protocol"),
+          onEvent
+        );
+      }
+
+      const [sentiment, competitor] = await Promise.all([
+        isSelected("sentiment")
+          ? withAgentEvent(
+              "sentiment" as any,
+              "Quick-reading community sentiment…",
+              "Sentiment pulse done.",
+              () => communitySentimentAgent(outputs.reddit || "No Reddit data.", true),
+              onEvent
+            )
+          : Promise.resolve("Sentiment skipped."),
+        isSelected("competitor") && competitorContent
+          ? withAgentEvent(
+              "competitor" as any,
+              "Quick-scanning competitor changes…",
+              "Competitor pulse done.",
+              () => competitorIntelligenceAgent(websiteContent, competitorContent, true),
+              onEvent
+            )
+          : Promise.resolve("Competitor pulse skipped."),
+      ]);
+      outputs.sentiment = sentiment;
+      outputs.competitor = competitor;
+      break;
+    }
+  }
+
+  return outputs;
+}

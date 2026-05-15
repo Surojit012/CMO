@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { Check } from "lucide-react";
+import type { ReportType } from "@/lib/types";
+import { REPORT_AGENT_MAP } from "@/lib/types";
 
 export type AgentConfig = {
   name: string;
@@ -9,7 +11,9 @@ export type AgentConfig = {
   key: string;
 };
 
-const AGENTS: AgentConfig[] = [
+/** All available agents across all report types */
+const ALL_AGENTS: AgentConfig[] = [
+  // Legacy agents
   { key: "strategist", name: "Strategist", cost: 0.2 },
   { key: "copywriter", name: "Copywriter", cost: 0.2 },
   { key: "seo", name: "SEO", cost: 0.2 },
@@ -18,17 +22,43 @@ const AGENTS: AgentConfig[] = [
   { key: "reddit", name: "Reddit", cost: 0.15 },
   { key: "critic", name: "Critic", cost: 0.1 },
   { key: "aggregator", name: "Aggregator", cost: 0.1 },
+  // Crypto-native agents
+  { key: "narrative", name: "Narrative", cost: 0.3 },
+  { key: "positioning", name: "Positioning", cost: 0.25 },
+  { key: "competitor", name: "Competitor", cost: 0.4 },
+  { key: "sentiment", name: "Sentiment", cost: 0.2 },
 ];
 
 type AgentSelectorProps = {
   selectedAgents: string[];
   onSelectionChange: (agents: string[]) => void;
   activePlan: string;
+  reportType?: ReportType;
 };
 
-export function AgentSelector({ selectedAgents, onSelectionChange, activePlan }: AgentSelectorProps) {
+/**
+ * Returns the list of agents available for a given report type.
+ * Falls back to legacy agents when no report type is specified.
+ */
+function getAgentsForReport(reportType?: ReportType): AgentConfig[] {
+  if (!reportType) {
+    // Legacy mode — show original 8 agents
+    return ALL_AGENTS.filter(a =>
+      ["strategist", "copywriter", "seo", "conversion", "distribution", "reddit", "critic", "aggregator"].includes(a.key)
+    );
+  }
+
+  const agentKeys = REPORT_AGENT_MAP[reportType] || [];
+  return ALL_AGENTS.filter(a => agentKeys.includes(a.key));
+}
+
+export function AgentSelector({ selectedAgents, onSelectionChange, activePlan, reportType }: AgentSelectorProps) {
   const isStarterPlan = activePlan === "weekly";
-  const allowedAgentsForStarter = ["strategist", "copywriter", "seo"];
+  const allowedAgentsForStarter = reportType
+    ? REPORT_AGENT_MAP[reportType]?.slice(0, 3) || [] // First 3 agents for starter plan
+    : ["strategist", "copywriter", "seo"];
+
+  const availableAgents = getAgentsForReport(reportType);
 
   const toggleAgent = useCallback(
     (key: string) => {
@@ -48,15 +78,15 @@ export function AgentSelector({ selectedAgents, onSelectionChange, activePlan }:
     if (isStarterPlan) {
       onSelectionChange(allowedAgentsForStarter);
     } else {
-      onSelectionChange(AGENTS.map((a) => a.key));
+      onSelectionChange(availableAgents.map((a) => a.key));
     }
   };
-  const clearAll = () => onSelectionChange([AGENTS[0].key]); // Keep at least one
+  const clearAll = () => onSelectionChange([availableAgents[0]?.key || "strategist"]); // Keep at least one
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-medium tracking-widest uppercase text-zinc-500">
+        <p className="text-[10px] font-medium tracking-widest uppercase text-zinc-500 dark:text-zinc-500">
           Select Agents
         </p>
         <div className="flex items-center gap-3">
@@ -76,7 +106,7 @@ export function AgentSelector({ selectedAgents, onSelectionChange, activePlan }:
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {AGENTS.map((agent) => {
+        {availableAgents.map((agent) => {
           const isSelected = selectedAgents.includes(agent.key);
           const isDisabled = isStarterPlan && !allowedAgentsForStarter.includes(agent.key);
 
@@ -115,12 +145,12 @@ export function AgentSelector({ selectedAgents, onSelectionChange, activePlan }:
 }
 
 export function getAgentPrice(selectedAgents: string[]): number {
-  return AGENTS.filter((a) => selectedAgents.includes(a.key)).reduce(
+  return ALL_AGENTS.filter((a) => selectedAgents.includes(a.key)).reduce(
     (sum, a) => sum + a.cost,
     0
   );
 }
 
-export function getAllAgentKeys(): string[] {
-  return AGENTS.map((a) => a.key);
+export function getAllAgentKeys(reportType?: ReportType): string[] {
+  return getAgentsForReport(reportType).map((a) => a.key);
 }

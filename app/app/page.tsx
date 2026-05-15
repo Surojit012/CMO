@@ -67,7 +67,7 @@ export default function Home() {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"analysis" | "audit" | "outreach">("analysis");
+  const [activeTab, setActiveTab] = useState<import("@/lib/types").ReportType>("token-narrative");
 
   // Wallet state lifted for Navbar
   const [balance, setBalance] = useState("0.00");
@@ -162,14 +162,20 @@ export default function Home() {
     const report = specificAnalysis || session.analyses[0];
     if (!report) return;
 
-    // Set the correct tab based on report type
-    if (report.type === "audit") {
-      setActiveTab("audit");
-    } else if (report.type === "outreach") {
-      setActiveTab("outreach");
-    } else {
-      setActiveTab("analysis");
-    }
+    // Set the correct tab based on report type (supports legacy + new report types)
+    const reportType = (report as any).data?.reportType || report.type;
+    const TAB_MAP: Record<string, import("@/lib/types").ReportType> = {
+      "audit": "competitor-battle-card",
+      "outreach": "community-health",
+      "analysis": "token-narrative",
+      // New report types map directly
+      "token-narrative": "token-narrative",
+      "competitor-battle-card": "competitor-battle-card",
+      "community-health": "community-health",
+      "launch-readiness": "launch-readiness",
+      "weekly-pulse": "weekly-pulse",
+    };
+    setActiveTab(TAB_MAP[reportType] || "token-narrative");
 
     // Load the report data into the workspace
     if (report.data) {

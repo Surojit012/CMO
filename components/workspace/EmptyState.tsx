@@ -2,9 +2,11 @@
 
 import { useState, FormEvent } from "react";
 import { AgentSelector, getAgentPrice, getAllAgentKeys } from "./AgentSelector";
+import type { ReportType } from "@/lib/types";
+import { REPORT_TYPE_LABELS, REPORT_TYPE_PRICES } from "@/lib/types";
 
 type EmptyStateProps = {
-  activeTab: "analysis" | "audit";
+  activeTab: ReportType;
   compareMode: boolean;
   onCompareModeChange: (mode: boolean) => void;
   inputValue: string;
@@ -28,6 +30,35 @@ type EmptyStateProps = {
   selectedAgents: string[];
   onAgentSelectionChange: (agents: string[]) => void;
   activePlan: string;
+};
+
+/** Report type specific hero content */
+const REPORT_HEROES: Record<ReportType, { title: string; subtitle: string; placeholder: string }> = {
+  "token-narrative": {
+    title: "Audit your protocol's story.",
+    subtitle: "Narrative clarity, positioning gaps, and market meta alignment.",
+    placeholder: "https://your-protocol.xyz",
+  },
+  "competitor-battle-card": {
+    title: "Build your battle card.",
+    subtitle: "Head-to-head competitive intelligence against any protocol.",
+    placeholder: "Your protocol — e.g., https://uniswap.org",
+  },
+  "community-health": {
+    title: "Check community pulse.",
+    subtitle: "Sentiment analysis, pain points, and health score from Reddit.",
+    placeholder: "https://your-protocol.xyz",
+  },
+  "launch-readiness": {
+    title: "Pre-launch readiness check.",
+    subtitle: "Full-spectrum audit: narrative, positioning, community, SEO, copy.",
+    placeholder: "https://your-protocol.xyz",
+  },
+  "weekly-pulse": {
+    title: "Get your weekly pulse.",
+    subtitle: "Quick-scan: community sentiment, competitor moves, Reddit chatter.",
+    placeholder: "https://your-protocol.xyz",
+  },
 };
 
 export function EmptyState({
@@ -56,11 +87,14 @@ export function EmptyState({
   activePlan,
 }: EmptyStateProps) {
   const price = getAgentPrice(selectedAgents);
+  const hero = REPORT_HEROES[activeTab];
+  const reportPrice = REPORT_TYPE_PRICES[activeTab];
+  const needsCompetitor = activeTab === "competitor-battle-card";
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || disabled) return;
-    if (compareMode) {
+    if (needsCompetitor && compareUrl.trim()) {
       onCompareSubmit();
     } else {
       onSubmit(inputValue.trim());
@@ -71,11 +105,11 @@ export function EmptyState({
   let ctaLabel = buttonLabel;
   const isSubscribed = ["weekly", "monthly", "yearly"].includes(activePlan);
 
-  if (activeTab === "analysis" && !compareMode && showPaymentUpsell) {
+  if (showPaymentUpsell) {
     if (isSubscribed) {
-      ctaLabel = "Analyze (Included)";
+      ctaLabel = `Run ${REPORT_TYPE_LABELS[activeTab]} (Included)`;
     } else if (hasSufficientBalance) {
-      ctaLabel = `Analyze — ${price.toFixed(2)} USDC`;
+      ctaLabel = `Run — ${reportPrice} USDC`;
     }
   }
 
@@ -85,19 +119,14 @@ export function EmptyState({
         {/* Hero */}
         <div className="text-center space-y-3">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white">
-            {activeTab === "audit"
-              ? "Deep competitive intelligence."
-              : compareMode
-              ? "Compare two sites."
-              : "Drop in a URL."}
+            {hero.title}
           </h1>
           <p className="text-sm text-zinc-500 leading-relaxed max-w-md mx-auto">
-            {activeTab === "audit"
-              ? "$15 USDC per report · AI-powered market intelligence"
-              : compareMode
-              ? "Enter your site and a competitor. Get a head-to-head battle card."
-              : "8 AI agents audit your site and return a growth strategy."}
+            {hero.subtitle}
           </p>
+          <span className="inline-block rounded-full bg-white/[0.05] border border-white/10 px-3 py-1 text-[11px] font-mono text-zinc-400">
+            {reportPrice} USDC per report
+          </span>
         </div>
 
         {/* URL Input */}
@@ -106,13 +135,7 @@ export function EmptyState({
             <input
               type="text"
               inputMode="url"
-              placeholder={
-                activeTab === "audit"
-                  ? "Enter any website URL to audit..."
-                  : compareMode
-                  ? "Your site — e.g., https://trycmo.com"
-                  : "https://yoursite.com"
-              }
+              placeholder={hero.placeholder}
               value={inputValue}
               onChange={(e) => onInputChange(e.target.value)}
               disabled={disabled}
@@ -120,8 +143,8 @@ export function EmptyState({
             />
           </div>
 
-          {/* Compare mode second input */}
-          {compareMode && activeTab === "analysis" && (
+          {/* Competitor URL — Battle Card only */}
+          {needsCompetitor && (
             <div className="space-y-2 animate-slide-up">
               <div className="flex items-center justify-center gap-3 py-1">
                 <div className="h-px flex-1 bg-white/5" />
@@ -133,7 +156,7 @@ export function EmptyState({
               <input
                 type="text"
                 inputMode="url"
-                placeholder="Competitor — e.g., https://okara.ai"
+                placeholder="Competitor — e.g., https://competitor-protocol.xyz"
                 value={compareUrl}
                 onChange={(e) => onCompareUrlChange(e.target.value)}
                 disabled={disabled}
@@ -142,56 +165,23 @@ export function EmptyState({
             </div>
           )}
 
-          {/* Agent Selector — only for growth analysis, not audit */}
-          {activeTab === "analysis" && !compareMode && (
-            <div className="pt-2">
-              <AgentSelector
-                selectedAgents={selectedAgents}
-                onSelectionChange={onAgentSelectionChange}
-                activePlan={activePlan}
-              />
-            </div>
-          )}
-
-          {/* Compare mode toggle — analysis only */}
-          {activeTab === "analysis" && (
-            <div className="flex justify-center pt-1">
-              <div className="flex items-center rounded-full bg-white/[0.03] border border-white/5 p-0.5">
-                <button
-                  type="button"
-                  onClick={() => onCompareModeChange(false)}
-                  className={`rounded-full px-4 py-1.5 text-[11px] font-medium transition-all ${
-                    !compareMode
-                      ? "bg-white/10 text-white"
-                      : "text-zinc-600 hover:text-zinc-400"
-                  }`}
-                >
-                  Single
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onCompareModeChange(true)}
-                  className={`rounded-full px-4 py-1.5 text-[11px] font-medium transition-all ${
-                    compareMode
-                      ? "bg-white/10 text-white"
-                      : "text-zinc-600 hover:text-zinc-400"
-                  }`}
-                >
-                  Compare
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Agent Selector */}
+          <div className="pt-2">
+            <AgentSelector
+              selectedAgents={selectedAgents}
+              onSelectionChange={onAgentSelectionChange}
+              activePlan={activePlan}
+              reportType={activeTab}
+            />
+          </div>
 
           {/* Insufficient balance warning */}
           {showPaymentUpsell && !hasSufficientBalance && (
             <div className="rounded-2xl bg-white/[0.03] border border-white/5 p-4 text-center space-y-3 animate-slide-up">
               <p className="text-xs text-zinc-400">
-                {activeTab === "audit"
-                  ? "Market Audits require $15 USDC"
-                  : freeRemaining === 0
-                  ? "You've used your 3 free analyses"
-                  : "Fund your wallet to continue"}
+                {freeRemaining === 0
+                  ? "You've used your free analyses"
+                  : `${REPORT_TYPE_LABELS[activeTab]} requires ${reportPrice} USDC`}
               </p>
               <div className="flex items-center justify-center gap-3">
                 <span className="font-mono text-xs text-zinc-600">
@@ -218,7 +208,7 @@ export function EmptyState({
           <button
             type={onButtonClick ? "button" : "submit"}
             onClick={onButtonClick ? () => onButtonClick() : undefined}
-            disabled={disabled || buttonLoading || (!onButtonClick && !inputValue.trim())}
+            disabled={disabled || buttonLoading || (!onButtonClick && !inputValue.trim()) || (needsCompetitor && !compareUrl.trim())}
             className="w-full h-12 sm:h-14 rounded-full bg-white text-black text-sm font-semibold transition hover:bg-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             {buttonLoading ? "Processing..." : ctaLabel}

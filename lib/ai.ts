@@ -1,6 +1,6 @@
-import type { GrowthResponse, MemoryContext, CriticResult, ArcReceipt } from "./types";
+import type { GrowthResponse, MemoryContext, CriticResult, ArcReceipt, ReportType } from "./types";
 import { aggregateAgentOutputs } from "./aggregator";
-import { runAllAgents } from "./agents";
+import { runAllAgents, runAgentsForReport } from "./agents";
 import { runCriticPass, getDefaultCriticResult } from "./critic";
 import { getOutreachContext, formatOutreachContext } from "./outreach-bridge";
 import {
@@ -21,14 +21,7 @@ type WebsiteContext = {
 type MultiAgentAnalysis = {
   markdown: string;
   analysis: GrowthResponse;
-  agents: {
-    strategist: string;
-    copywriter: string;
-    seo: string;
-    conversion: string;
-    distribution: string;
-    reddit: string;
-  };
+  agents: Record<string, string>;
   critic: CriticResult;
   productName: string;
   arcReceipt?: ArcReceipt;
@@ -142,7 +135,7 @@ function buildMemoryPrompt(memory: MemoryContext) {
  *  1. Fetch outreach + market audit context from Redis (parallel)
  *  2. Inject into websiteContent → Strategist sees both upstream
  *  3. Pass market audit summary to runAllAgents → SEO agent
- *  4. Run all 6 agents (Strategist-first, then 5 in parallel)
+ *  4. Run agents (legacy 6-agent or crypto-native report pipeline)
  *  5. Critic pass
  *  6. Aggregator
  *  7. Fire-and-forget: settle ERC-8183 nanopayment jobs in background
@@ -154,7 +147,9 @@ export async function generateGrowthAnalysis(
   memory: MemoryContext,
   onEvent?: AgentEventCallback,
   userWalletAddress?: string,
-  selectedAgents?: string[]
+  selectedAgents?: string[],
+  reportType?: ReportType,
+  competitorContent?: string
 ): Promise<MultiAgentAnalysis> {
   // Step 1: Fetch both data bridges from Redis in parallel (non-blocking)
   onEvent?.({ agent: "system", status: "thinking", message: "Fetching outreach & market data…", timestamp: Date.now() });
@@ -179,9 +174,15 @@ export async function generateGrowthAnalysis(
   // Step 4: Extract product name for hallucination checking
   const productName = extractProductName(websiteContent, context.url);
 
-  // Step 5: Run all agents (unchanged — no blocking on payments)
-  const marketAuditForSeo = auditCtx ? formatMarketAuditForAgents(auditCtx) : undefined;
-  const agentOutputs = await runAllAgents(websiteContent, marketAuditForSeo, onEvent, selectedAgents);
+  // Step 5: Run agents — crypto-native pipeline or legacy
+  let agentOutputs: Record<string, string>;
+  if (reportType) {
+    onEvent?.({ agent: "system", status: "thinking", message: `Running ${reportType} pipeline…`, timestamp: Date.now() });
+    agentOutputs = await runAgentsForReport(reportType, websiteContent, onEvent, selectedAgents, competitorContent);
+  } else {
+    const marketAuditForSeo = auditCtx ? formatMarketAuditForAgents(auditCtx) : undefined;
+    agentOutputs = await runAllAgents(websiteContent, marketAuditForSeo, onEvent, selectedAgents);
+  }
 
   // Step 6: Critic Pass
   let criticResult = getDefaultCriticResult();

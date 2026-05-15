@@ -1,3 +1,39 @@
+// ─── Report Type System ──────────────────────────────────────────────────────
+
+export type ReportType =
+  | "token-narrative"
+  | "competitor-battle-card"
+  | "community-health"
+  | "launch-readiness"
+  | "weekly-pulse";
+
+export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
+  "token-narrative": "Token Narrative Audit",
+  "competitor-battle-card": "Competitor Battle Card",
+  "community-health": "Community Health Check",
+  "launch-readiness": "Launch Readiness Report",
+  "weekly-pulse": "Weekly Pulse",
+};
+
+export const REPORT_TYPE_PRICES: Record<ReportType, string> = {
+  "token-narrative": "2.00",
+  "competitor-battle-card": "3.00",
+  "community-health": "1.50",
+  "launch-readiness": "5.00",
+  "weekly-pulse": "0.50",
+};
+
+/** Agents available per report type */
+export const REPORT_AGENT_MAP: Record<ReportType, string[]> = {
+  "token-narrative": ["narrative", "positioning", "copywriter", "critic", "aggregator"],
+  "competitor-battle-card": ["competitor", "seo", "positioning", "critic", "aggregator"],
+  "community-health": ["reddit", "sentiment", "distribution", "critic", "aggregator"],
+  "launch-readiness": ["narrative", "positioning", "competitor", "sentiment", "reddit", "seo", "copywriter", "critic", "aggregator"],
+  "weekly-pulse": ["reddit", "sentiment", "competitor", "aggregator"],
+};
+
+// ─── Legacy Growth Response (kept for backward compatibility) ────────────────
+
 export type GrowthResponse = {
   criticalIssues: string[];
   growthStrategy: string[];
@@ -105,6 +141,8 @@ export type AnalyzeRequest = {
   url: string;
   userId?: string | null;
   selectedAgents?: string[];
+  reportType?: ReportType;
+  competitorUrl?: string;
 };
 
 export type AnalyzeSuccessResponse = {
@@ -112,14 +150,7 @@ export type AnalyzeSuccessResponse = {
   url: string;
   markdown: string;
   analysis: GrowthResponse;
-  agents: {
-    strategist: string;
-    copywriter: string;
-    seo: string;
-    conversion: string;
-    distribution: string;
-    reddit: string;
-  };
+  agents: Record<string, string>;
   extracted: {
     title: string;
     metaDescription: string;
@@ -127,6 +158,8 @@ export type AnalyzeSuccessResponse = {
   };
   arcReceipt?: ArcReceipt;
   selectedAgents?: string[];
+  reportType?: ReportType;
+  competitorUrl?: string;
 };
 
 export type AnalyzeErrorResponse = {
