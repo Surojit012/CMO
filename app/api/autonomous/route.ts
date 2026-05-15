@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       enabled: userState?.enabled || false,
+      activeUrl: userState?.websiteUrl || "",
       hasTelegram: !!telegramChatId,
       hasNewReport: report ? !report.seen : false,
       timestamp: report ? report.timestamp : "",

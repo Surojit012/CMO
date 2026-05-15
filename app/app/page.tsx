@@ -79,6 +79,7 @@ export default function Home() {
   const [autonomousEnabled, setAutonomousEnabled] = useState(false);
   const [autonomousLoading, setAutonomousLoading] = useState(false);
   const [autonomousUrl, setAutonomousUrl] = useState("");
+  const [activeAutonomousUrl, setActiveAutonomousUrl] = useState("");
 
   const wallet = wallets?.[0];
   const walletAddress = wallet?.address;
@@ -118,7 +119,7 @@ export default function Home() {
         const data = await res.json();
         setHasNewReportBadge(data.hasNewReport);
         if (data.enabled !== undefined) setAutonomousEnabled(data.enabled);
-        if (data.url) setAutonomousUrl(data.url);
+        if (data.activeUrl) setActiveAutonomousUrl(data.activeUrl);
       } catch {}
     })();
   }, [authenticated, user?.id]);
@@ -127,6 +128,9 @@ export default function Home() {
   const handleAutonomousToggle = useCallback(async () => {
     if (!user?.id || !autonomousUrl) return;
     setAutonomousLoading(true);
+    
+    const isCurrentlyAutonomous = autonomousEnabled && autonomousUrl === activeAutonomousUrl;
+    
     try {
       const token = await getAccessToken();
       const res = await fetch("/api/autonomous", {
@@ -136,16 +140,22 @@ export default function Home() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          enabled: !autonomousEnabled,
-          url: autonomousUrl,
+          enabled: !isCurrentlyAutonomous,
+          websiteUrl: autonomousUrl,
         }),
       });
       if (res.ok) {
-        setAutonomousEnabled(!autonomousEnabled);
+        if (!isCurrentlyAutonomous) {
+          setAutonomousEnabled(true);
+          setActiveAutonomousUrl(autonomousUrl);
+        } else {
+          setAutonomousEnabled(false);
+          setActiveAutonomousUrl("");
+        }
       }
     } catch { /* silent */ }
     finally { setAutonomousLoading(false); }
-  }, [user?.id, autonomousEnabled, autonomousUrl]);
+  }, [user?.id, autonomousEnabled, activeAutonomousUrl, autonomousUrl, getAccessToken]);
 
   // Handle history session click — load the saved report
   const handleSessionSelect = useCallback((session: HistorySession, specificAnalysis?: SavedReport) => {
@@ -244,7 +254,7 @@ export default function Home() {
           onSessionSelect={handleSessionSelect}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
-          autonomousEnabled={autonomousEnabled}
+          autonomousEnabled={autonomousEnabled && autonomousUrl === activeAutonomousUrl}
           autonomousLoading={autonomousLoading}
           onAutonomousToggle={handleAutonomousToggle}
           autonomousUrl={autonomousUrl}
