@@ -29,10 +29,16 @@
 - **Decentralized Quotas:** Deprecated traditional Web2 Upstash rate-limiting for entirely on-chain "3 free trial (24h)" quotas linked directly to a Web3 Wallet identity in Privy.
 - **USDC Micropayments:** Added direct, seamless checkout flows to require 5 testnet USDC after free quotas are reached. Built-in instant RPC balance queries.
 
+## Phase 7: Subscription Enforcement & Theme Resilience
+- **Strict Plan Verification:** Deprecated vulnerable local storage trust. Required on-chain USDC payment verification before plan upgrades can occur.
+- **Tier Limiting:** Programmatically locked features (e.g., maximum 3 agents on Starter plan) and applied appropriate UI feedback and gating.
+- **Native Light/Dark Mode:** Eradicated legacy `.dark-override` CSS hacks. Re-architected `OutreachPlanView` and UI reports to natively respect standard tailwind tokens (`bg-zinc-900`, `text-zinc-100`) for seamless Light/Dark mode transitions.
+- **Autonomous Precision:** Refactored the `Autonomous` global toggle to be project-specific. Fixed a silent payload bug where the frontend sent `url` instead of `websiteUrl`.
+
 ## Current State
 CMO is a fully functional, multi-agent AI growth system with autonomous daily monitoring, integrated content distribution, and **Web3-native monetization**.
 - All 5 base agents + 1 specialized Reddit agent are live.
 - Parallel processing and AI routing (Fireworks/Groq) are enabled.
-- Daily autonomous mode is configured.
+- Daily autonomous mode is strictly project-specific and successfully deployed.
 - One-click publishing to Dev.to and Hashnode is live.
-- Wallet-bound quotas and USDC micropayments via Arc Testnet are active.
+- Wallet-bound quotas, subscription enforcement, and USDC micropayments via Arc Testnet are active.
