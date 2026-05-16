@@ -1,7 +1,7 @@
 import Groq from "groq-sdk";
 
-const FIREWORKS_MODEL = "accounts/fireworks/models/llama-v3p1-70b-instruct";
-const FIREWORKS_FALLBACK_MODEL = "accounts/fireworks/models/qwen3-30b-a3b-instruct-2507";
+const FIREWORKS_MODEL = "accounts/fireworks/models/deepseek-v4-pro";
+const FIREWORKS_FALLBACK_MODEL = "accounts/fireworks/models/glm-5p1";
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 const MAX_RETRIES = 5;
