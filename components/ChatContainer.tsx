@@ -467,7 +467,13 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
         signal: requestControllerRef.current.signal,
         body: JSON.stringify({ url1, url2 })
       });
-      const resData = await response.json();
+      let resData: any;
+      const responseText = await response.text();
+      try {
+        resData = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Server returned a non-JSON error: ${responseText.slice(0, 100)}...`);
+      }
       if (!response.ok || "error" in resData) {
         throw new Error("error" in resData ? resData.error : "Comparison failed.");
       }
@@ -701,7 +707,13 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
         })
       });
 
-      const resData = (await response.json()) as AnalyzeSuccessResponse | AnalyzeErrorResponse;
+      let resData: any;
+      const responseText = await response.text();
+      try {
+        resData = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Server returned a non-JSON error: ${responseText.slice(0, 100)}...`);
+      }
 
       if (!response.ok || "error" in resData) {
         throw new Error("error" in resData ? resData.error : "Analysis failed.");
@@ -823,7 +835,13 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
         })
       });
 
-      const data = (await response.json()) as FeedbackResponse | AnalyzeErrorResponse;
+      let data: any;
+      const responseText = await response.text();
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Server returned a non-JSON error: ${responseText.slice(0, 100)}...`);
+      }
 
       if (!response.ok || "error" in data) {
         throw new Error("error" in data ? data.error : "Unable to save feedback.");
@@ -887,7 +905,13 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
         })
       });
 
-      const data = (await response.json()) as ActionResponse | AnalyzeErrorResponse;
+      let data: any;
+      const responseText = await response.text();
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        throw new Error(`Server returned a non-JSON error: ${responseText.slice(0, 100)}...`);
+      }
 
       if (!response.ok || "error" in data) {
         throw new Error("error" in data ? data.error : "Unable to generate asset.");
