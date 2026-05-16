@@ -4,6 +4,8 @@ import { supabaseServer } from "@/lib/supabase";
 import { getPrivyUserIdFromRequest } from "@/lib/privy-auth";
 import { storeMarketAudit } from "@/lib/market-audit-bridge";
 
+export const maxDuration = 60; // 60 seconds max execution time for Vercel Hobby
+
 const SYSTEM_PROMPT = `You are a senior market analyst and startup advisor with 20 years of experience.
 
 You will receive:

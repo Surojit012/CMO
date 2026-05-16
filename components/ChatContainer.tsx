@@ -587,7 +587,13 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
           signal: requestControllerRef.current.signal,
           body: JSON.stringify({ url: normalizedUrl })
         });
-        const data = await response.json();
+        let data;
+        const responseText = await response.text();
+        try {
+          data = JSON.parse(responseText);
+        } catch (e) {
+          throw new Error(`Server returned a non-JSON error: ${responseText.slice(0, 100)}...`);
+        }
         
         if (!response.ok || "error" in data) {
           throw new Error("error" in data ? data.error : "Audit failed to generate.");
