@@ -11,24 +11,24 @@ type WelcomeStepProps = {
 };
 
 const planLabels: Record<string, string> = {
-  weekly: "Starter (Weekly)",
-  monthly: "Growth (Monthly)",
-  yearly: "Scale (Yearly)",
+  weekly: "Explorer (Weekly)",
+  monthly: "Protocol (Monthly)",
+  yearly: "Ecosystem (Yearly)",
   payperuse: "Pay Per Use",
 };
 
 const terminalLines = [
   { text: "Initializing CMO workspace...", delay: 0 },
-  { text: "Connecting 8 AI agents...", delay: 600 },
-  { text: "  ✓ Strategist ready", delay: 1000 },
-  { text: "  ✓ Copywriter ready", delay: 1300 },
-  { text: "  ✓ SEO Analyst ready", delay: 1600 },
-  { text: "  ✓ Conversion Optimizer ready", delay: 1900 },
-  { text: "  ✓ Distribution Planner ready", delay: 2200 },
-  { text: "  ✓ Reddit Intel ready", delay: 2500 },
-  { text: "  ✓ Critic ready", delay: 2700 },
-  { text: "  ✓ Aggregator ready", delay: 2900 },
-  { text: "Setting up daily briefings...", delay: 3300 },
+  { text: "Connecting crypto intelligence agents...", delay: 600 },
+  { text: "  ✓ Narrative Agent ready", delay: 1000 },
+  { text: "  ✓ Positioning Agent ready", delay: 1300 },
+  { text: "  ✓ Competitor Intelligence ready", delay: 1600 },
+  { text: "  ✓ Community Sentiment ready", delay: 1900 },
+  { text: "  ✓ Reddit Intel ready", delay: 2200 },
+  { text: "  ✓ Critic ready", delay: 2500 },
+  { text: "  ✓ Aggregator ready", delay: 2700 },
+  { text: "  ✓ Arc nanopayments ready", delay: 2900 },
+  { text: "Setting up weekly protocol briefings...", delay: 3300 },
   { text: "Workspace configured. You're all set.", delay: 3800 },
 ];
 

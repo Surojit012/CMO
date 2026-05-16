@@ -46,7 +46,7 @@ export function ManagePlanModal({ isOpen, onClose }: ManagePlanModalProps) {
 
   const handlePlanSelect = async (plan: string) => {
     setSelectedPlan(plan);
-    const prices: Record<string, number> = { weekly: 9, monthly: 29, yearly: 249, payperuse: 0 };
+    const prices: Record<string, number> = { weekly: 3.50, monthly: 12, yearly: 99, payperuse: 0 };
     const required = prices[plan] || 0;
     
     if (required > 0 && wallets?.[0]?.address) {
@@ -59,7 +59,7 @@ export function ManagePlanModal({ isOpen, onClose }: ManagePlanModalProps) {
   const handleFundSuccess = async () => {
     setFundModalOpen(false);
     if (selectedPlan) {
-      const prices: Record<string, number> = { weekly: 9, monthly: 29, yearly: 249, payperuse: 0 };
+      const prices: Record<string, number> = { weekly: 3.50, monthly: 12, yearly: 99, payperuse: 0 };
       await processPaymentAndSave(selectedPlan, prices[selectedPlan] || 0);
     }
   };

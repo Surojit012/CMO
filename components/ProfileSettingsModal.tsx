@@ -142,7 +142,7 @@ export function ProfileSettingsModal({ isOpen, onClose }: ProfileSettingsModalPr
               </div>
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-zinc-400">Project (Optional)</label>
+              <label className="mb-1.5 block text-xs font-medium text-zinc-400">Protocol / Project (Optional)</label>
               <div className="relative">
                 <FolderOpen className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-600" />
                 <input

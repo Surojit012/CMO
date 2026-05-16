@@ -155,7 +155,7 @@ export function HistorySidebar({ isOpen, onClose, onSessionSelect, activeSession
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case "analysis": return "Growth Analysis";
+      case "analysis": return "Protocol Intelligence";
       case "audit": return "Market Audit";
       case "outreach": return "Outreach Plan";
       default: return "Report";

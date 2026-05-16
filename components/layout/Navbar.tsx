@@ -139,7 +139,7 @@ export function Navbar({
                   </div>
                 </div>
                 {needsFunding && (
-                  <p className="mt-2 text-[11px] text-amber-500/80">Need at least $5 USDC to run analyses</p>
+                  <p className="mt-2 text-[11px] text-amber-500/80">Need at least 5 USDC to run reports</p>
                 )}
               </div>
 
@@ -162,12 +162,12 @@ export function Navbar({
                 <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-600 mb-2">Pricing</p>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">Growth Analysis</span>
-                    <span className="text-xs font-mono text-zinc-300">$1.35 USDC</span>
+                    <span className="text-xs text-zinc-400">Protocol Intelligence</span>
+                    <span className="text-xs font-mono text-zinc-300">1.35 USDC</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-zinc-400">Market Audit</span>
-                    <span className="text-xs font-mono text-zinc-300">$15.00 USDC</span>
+                    <span className="text-xs font-mono text-zinc-300">15.00 USDC</span>
                   </div>
                 </div>
               </div>

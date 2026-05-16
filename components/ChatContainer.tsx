@@ -601,7 +601,7 @@ export function ChatContainer({ userId, externalReport, onReportLoaded, activeTa
 
         // GENERATION SUCCESS. NOW CHARGE THE USER.
         if (loadingIntervalRef.current) window.clearInterval(loadingIntervalRef.current);
-        setCurrentStep("Audit drafted! Authorizing $15 USDC payment..." as any);
+        setCurrentStep("Audit drafted! Authorizing 15 USDC payment..." as any);
 
         const targetChainId = Number(process.env.NEXT_PUBLIC_ARC_CHAIN_ID || 5042002);
         if (wallet.chainId !== `eip155:${targetChainId}`) {

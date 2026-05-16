@@ -23,13 +23,13 @@ export function OutreachView({ context, sessionId, onSwitchToAnalysis }: Outreac
         </div>
         <h2 className="text-lg font-semibold text-zinc-300 mb-2">No active context found.</h2>
         <p className="text-sm text-zinc-600 max-w-sm mb-6">
-          Run a Growth Analysis first to unlock your outreach plan.
+          Run a Protocol Intelligence report first to unlock your outreach plan.
         </p>
         <button
           onClick={onSwitchToAnalysis}
           className="rounded-full bg-white/10 border border-white/10 px-5 py-2.5 text-sm font-medium text-white hover:bg-white/15 transition"
         >
-          Go to Growth Analysis
+          Go to Protocol Intelligence
         </button>
       </div>
     );

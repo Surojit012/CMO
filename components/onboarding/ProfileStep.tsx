@@ -20,7 +20,7 @@ const fields = [
   { key: "email", label: "Email", placeholder: "you@company.com", icon: AtSign, required: true },
   { key: "telegram", label: "Telegram", placeholder: "@username", icon: Send, required: true },
   { key: "twitter", label: "Twitter / X", placeholder: "@handle", icon: Twitter, required: false },
-  { key: "projectName", label: "Project Name", placeholder: "My Startup", icon: FolderOpen, required: false },
+  { key: "projectName", label: "Protocol / Project", placeholder: "Protocol / Project name", icon: FolderOpen, required: false },
 ];
 
 const containerVariants = {
@@ -54,7 +54,7 @@ export function ProfileStep({ data, onChange, onNext }: ProfileStepProps) {
           Tell us about you
         </h2>
         <p className="text-sm text-zinc-500 mt-2 max-w-xs mx-auto">
-          We&apos;ll use this to personalize your growth reports and send daily briefings.
+          We&apos;ll use this to personalize your protocol intelligence and send weekly briefings.
         </p>
       </motion.div>
 

@@ -258,7 +258,7 @@ export function WalletPanel() {
           <p className="text-sm font-semibold text-zinc-900">Market Audit</p>
         </div>
         <div className="flex items-center justify-between">
-          <p className="text-[11px] font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md">$15 USDC per report</p>
+          <p className="text-[11px] font-semibold text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md">15 USDC per report</p>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-zinc-400">No free tier</p>
         </div>
       </div>
@@ -274,7 +274,7 @@ export function WalletPanel() {
           {refreshButton}
         </div>
         {needsFunding ? (
-          <p className="mt-1 text-[11px] text-amber-600">You need at least $5 USDC to continue.</p>
+          <p className="mt-1 text-[11px] text-amber-600">You need at least 5 USDC to continue.</p>
         ) : null}
         {balanceError ? <p className="mt-1 text-[11px] text-amber-600">{balanceError}</p> : null}
         {lastUpdatedAt ? (
@@ -322,7 +322,7 @@ export function WalletPanel() {
       ) : null}
       {needsFunding ? (
         <p className="mt-2 text-center text-[11px] font-medium text-zinc-500">
-          You need at least $5 USDC to continue.
+          You need at least 5 USDC to continue.
         </p>
       ) : null}
       <details className="mt-2 rounded-lg bg-zinc-50 px-2 py-1 text-[10px] text-zinc-500">

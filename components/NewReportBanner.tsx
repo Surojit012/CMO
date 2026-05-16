@@ -75,7 +75,7 @@ export function NewReportBanner({ onViewReport }: NewReportBannerProps) {
         </span>
         <div className="flex flex-col">
           <p className="text-[13px] font-semibold text-white sm:text-sm">
-            {reportData.hasNewReport ? "Your daily growth report is ready" : "Today's Daily Report"}
+            {reportData.hasNewReport ? "Your weekly protocol report is ready" : "Today's Protocol Report"}
           </p>
           <p className="text-[11px] text-zinc-400 sm:text-xs">
             Generated on {new Date(reportData.timestamp).toLocaleDateString()} at {new Date(reportData.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

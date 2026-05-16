@@ -224,7 +224,7 @@ export default function Home() {
           <p className="text-sm font-bold tracking-[0.2em] text-white mb-2">CMO</p>
           <span className="rounded-full bg-white/5 border border-white/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-500">Beta</span>
           <h1 className="mt-6 text-3xl font-semibold text-white">Login to CMO</h1>
-          <p className="mt-3 text-sm text-zinc-500">Sign in to run AI growth analysis.</p>
+          <p className="mt-3 text-sm text-zinc-500">Sign in to access your protocol intelligence.</p>
           <button onClick={login} className="mt-7 rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-zinc-200 transition">
             Login to CMO
           </button>

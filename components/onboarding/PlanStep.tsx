@@ -23,47 +23,48 @@ type Plan = {
 const PLANS: Plan[] = [
   {
     id: "weekly",
-    name: "Starter",
-    description: "Perfect for testing CMO on a single project.",
-    price: "$9",
+    name: "Explorer",
+    description: "For protocols getting started with intelligence.",
+    price: "3.50 USDC",
     period: "/ week",
     features: [
-      "5 growth analyses per week",
-      "3 AI agents included",
-      "Basic SEO + Copy reports",
-      "Email report delivery",
+      "Weekly Pulse report",
+      "1 Narrative Audit per week",
+      "Community Health Check",
+      "Settled on Arc Testnet",
+      "Telegram briefings",
     ],
     icon: Zap,
   },
   {
     id: "monthly",
-    name: "Growth",
-    description: "For founders who ship weekly and iterate fast.",
-    price: "$29",
+    name: "Protocol",
+    description: "Full intelligence suite for active protocols.",
+    price: "12 USDC",
     period: "/ month",
     features: [
-      "Unlimited growth analyses",
-      "All 8 AI agents",
-      "Market audit reports",
-      "Daily Telegram briefings",
-      "Autonomous mode",
+      "All 5 report types",
+      "Unlimited report runs",
+      "Weekly Pulse auto-run",
+      "Battle Card comparisons",
+      "Launch Readiness audit",
+      "Telegram + email briefings",
     ],
     icon: TrendingUp,
     popular: true,
   },
   {
     id: "yearly",
-    name: "Scale",
-    description: "Best value. Lock in the rate for a full year.",
-    price: "$249",
+    name: "Ecosystem",
+    description: "Lock in the best rate. Full CMO for a year.",
+    price: "99 USDC",
     period: "/ year",
     features: [
-      "Everything in Growth",
+      "Everything in Protocol",
       "Priority agent compute",
-      "Outreach engine access",
-      "Compare mode",
       "API access",
-      "White-label exports",
+      "White-label report exports",
+      "Early access to new agents",
     ],
     icon: Crown,
   },
@@ -102,20 +103,20 @@ export function PlanStep({ onSelect, onBack }: PlanStepProps) {
   const questions = [
     {
       key: "frequency",
-      question: "How often will you run analyses?",
+      question: "How often will you run reports?",
       options: [
         { label: "A few times to test", value: "low" },
         { label: "Weekly", value: "medium" },
-        { label: "Daily / automated", value: "high" },
+        { label: "Automated / daily", value: "high" },
       ],
     },
     {
       key: "agents",
-      question: "How many agents do you need?",
+      question: "What reports do you need?",
       options: [
-        { label: "Just SEO + Copy", value: "few" },
-        { label: "Most of them", value: "most" },
-        { label: "All 8 agents", value: "all" },
+        { label: "Just Narrative + Pulse", value: "few" },
+        { label: "Most report types", value: "most" },
+        { label: "All 5 report types", value: "all" },
       ],
     },
     {
@@ -123,7 +124,7 @@ export function PlanStep({ onSelect, onBack }: PlanStepProps) {
       question: "What fits your budget?",
       options: [
         { label: "Pay only when I use it", value: "payperuse" },
-        { label: "Under $30/month", value: "low" },
+        { label: "Under 15 USDC/month", value: "low" },
         { label: "I want the best value", value: "high" },
       ],
     },
@@ -296,12 +297,13 @@ export function PlanStep({ onSelect, onBack }: PlanStepProps) {
             </div>
             <div className="text-left">
               <p className="text-sm font-semibold text-white">Pay Per Use</p>
-              <p className="text-[11px] text-zinc-500">No commitment. Pay only for the compute you use.</p>
+              <p className="text-[11px] text-zinc-500">No commitment. Pay only for the reports you run.</p>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-sm font-bold text-white">From $0.10</p>
-            <p className="text-[10px] text-zinc-600">per agent</p>
+            <p className="text-sm font-bold text-white">From 0.50 USDC</p>
+            <p className="text-[10px] text-zinc-600">per report</p>
+            <p className="text-[9px] text-zinc-700 mt-0.5">Settled as nanopayments on Arc · ERC-8183</p>
           </div>
         </button>
       </motion.div>
